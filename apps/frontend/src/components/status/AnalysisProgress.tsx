@@ -22,7 +22,8 @@ const ORDER: AnalysisStage[] = [
 
 const LABELS: Record<AnalysisStage, string> = {
   IDLE: "Ready",
-  UPLOADING: "Uploading",
+  UPLOADING: "Getting Repository",
+  DOWNLOADING: "Getting Repository",
   EXTRACTING: "Extracting",
   READING_REPOSITORY: "Reading Repository",
   BUILDING_METADATA: "Building Metadata",
@@ -38,7 +39,9 @@ const LABELS: Record<AnalysisStage, string> = {
 export default function AnalysisProgress({
   stage,
 }: Props) {
-  const current = ORDER.indexOf(stage);
+  const current = ORDER.indexOf(
+    stage === "DOWNLOADING" ? "UPLOADING" : stage,
+  );
 
   return (
     <div className="space-y-3">

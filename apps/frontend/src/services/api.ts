@@ -38,6 +38,21 @@ export async function startAnalysis(
   return response.data;
 }
 
+/**
+ * Starts a background analysis of a public GitHub repository.
+ * GitHub is checked before the job starts, so a bad URL or private
+ * repository fails here with a clear message.
+ */
+export async function startGithubAnalysis(
+  url: string,
+): Promise<{ jobId: string }> {
+  const response = await api.post<{ jobId: string }>("/analyze/github", {
+    url,
+  });
+
+  return response.data;
+}
+
 export interface JobHandlers {
   onProgress: (progress: AnalysisProgress) => void;
   onCompleted: (result: AnalyzeRepositoryResponse) => void;

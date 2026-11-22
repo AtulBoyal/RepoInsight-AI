@@ -13,8 +13,8 @@ import {
 export const STAGES = [
   {
     key: "UPLOADING",
-    title: "Uploading Repository",
-    description: "Uploading repository archive.",
+    title: "Getting Repository",
+    description: "Uploading your ZIP or downloading it from GitHub.",
     icon: Upload,
   },
   {
@@ -72,3 +72,10 @@ export const STAGES = [
     icon: CheckCircle,
   },
 ] as const;
+
+/**
+ * Downloading from GitHub is shown as the same first step as uploading.
+ */
+export function stageKey(stage: string): string {
+  return stage === "DOWNLOADING" ? "UPLOADING" : stage;
+}
