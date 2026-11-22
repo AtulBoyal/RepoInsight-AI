@@ -1,5 +1,6 @@
 import type { EngineeringReport } from "../../types/report";
 import SectionCard from "./SectionCard";
+import EvidenceList from "./EvidenceList";
 
 interface Props {
   report: EngineeringReport;
@@ -16,6 +17,8 @@ export default function StrengthsCard({
             <strong>{item.title}</strong>
 
             <p>{item.description}</p>
+
+            <EvidenceList evidence={item.evidence} />
           </li>
         ))}
       </ul>

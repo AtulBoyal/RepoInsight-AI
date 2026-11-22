@@ -2,7 +2,6 @@ import type { AnalysisContext, ContextFile } from "../context/context.types.js";
 import type { PromptSpec } from "./prompt.types.js";
 import { SYSTEM_INSTRUCTION, ANALYSIS_TASK, REPORT_REQUIREMENTS } from "./prompt.constants.js";
 import { ENGINEERING_REPORT_JSON_SCHEMA } from "../report/report.json-schema.js";
-import { MAX_FILE_CONTENT_CHARS } from "../../constants/repository.js";
 
 /**
  * Objective repository measurements.
@@ -23,8 +22,6 @@ function buildMetricsSection(
 
   return [
     "## Repository Metrics",
-    "",
-    `(Line counts cover at most the first ${MAX_FILE_CONTENT_CHARS} characters of each file.)`,
     "",
     `Lines: ${code.totalLinesOfCode} total, ${code.sourceLinesOfCode} source, ${code.commentLines} comment, ${code.blankLines} blank`,
     "",
@@ -57,10 +54,10 @@ function buildStaticAnalysisSection(
   return [
     "## Static Analysis",
     "",
-    "These counts come from lightweight pattern matching and are approximate.",
-    "Verify against the source files before citing a specific number.",
+    "Function, TypeScript and logging counts come from parsing JavaScript/TypeScript files (syntax only).",
+    "Test and duplicate counts are based on file names and are approximate.",
     "",
-    `Functions (JavaScript/TypeScript only): ${functions.totalFunctions} detected, average ${functions.averageFunctionLength} lines, longest ${functions.longestFunctionLines} lines, ${functions.functionsOver50Lines} over 50 lines, ${functions.functionsOver100Lines} over 100 lines`,
+    `Functions and methods with a block body (JavaScript/TypeScript only): ${functions.totalFunctions}, average ${functions.averageFunctionLength} lines, longest ${functions.longestFunctionLines} lines, ${functions.functionsOver50Lines} over 50 lines, ${functions.functionsOver100Lines} over 100 lines`,
     "",
     `TypeScript: ${typescript.anyUsages} "any", ${typescript.typeAssertions} type assertions (excluding "as const"), ${typescript.tsIgnoreCount} @ts-ignore, ${typescript.eslintDisableCount} eslint-disable`,
     "",
@@ -187,6 +184,19 @@ function buildStructureSection(context: AnalysisContext): string {
 /**
  * Formats a single source file.
  */
+/**
+ * Prefixes every line with its 1-based number ("  42| code"), so the
+ * model can cite exact lines instead of counting them.
+ */
+function numberLines(content: string): string {
+  const lines = content.split(/\r?\n/);
+  const width = String(lines.length).length;
+
+  return lines
+    .map((line, index) => `${String(index + 1).padStart(width)}| ${line}`)
+    .join("\n");
+}
+
 function buildFileSection(file: ContextFile): string {
   return [
     "===== FILE =====",
@@ -194,11 +204,11 @@ function buildFileSection(file: ContextFile): string {
     `Language: ${file.language}`,
     ...(file.truncated
       ? [
-          `Note: truncated to the first ${MAX_FILE_CONTENT_CHARS} characters; the rest of this file is not shown.`,
+          `Note: only the first ${file.content.split("\n").length} lines are shown (the file is longer). Do not cite lines beyond them.`,
         ]
       : []),
     "",
-    file.content.trim(),
+    numberLines(file.content),
     "===== END FILE =====",
   ].join("\n");
 }
@@ -280,6 +290,8 @@ function buildUserPrompt(context: AnalysisContext): string {
       "Return one JSON object that follows the response schema.",
       "All scores are integers from 0 to 10.",
       "Only cite files and line numbers from the Source Files section below.",
+      'Each source line is prefixed with its line number ("42| "). Cite that number; the prefix is not part of the code.',
+      "Use the exact path from the Path: line. Never cite section names (such as Repository Metrics) as files.",
       "Files listed under Files Not Included were not shown to you: you may mention",
       "that they exist, but do not describe or cite their contents.",
     ].join("\n"),

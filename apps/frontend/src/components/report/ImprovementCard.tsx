@@ -4,6 +4,9 @@ import {
   Wrench,
 } from "lucide-react";
 
+import type { EvidenceReference } from "../../types/report";
+import EvidenceList from "./EvidenceList";
+
 interface Props {
   title: string;
   priority: string;
@@ -11,6 +14,7 @@ interface Props {
   problem: string;
   recommendation: string;
   expectedImpact: string;
+  evidence: EvidenceReference[];
 }
 
 export default function ImprovementCard({
@@ -20,6 +24,7 @@ export default function ImprovementCard({
   problem,
   recommendation,
   expectedImpact,
+  evidence,
 }: Props) {
   const priorityColor =
     priority === "High"
@@ -94,6 +99,8 @@ export default function ImprovementCard({
             </p>
           </div>
         </div>
+
+        <EvidenceList evidence={evidence} />
 
       </div>
 

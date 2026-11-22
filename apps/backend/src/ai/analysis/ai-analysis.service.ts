@@ -3,14 +3,15 @@ import { buildAnalysisContext } from "../context/context.service.js";
 import { generateContent } from "../gemini/gemini.client.js";
 import { cleanJson } from "../parser/json-cleaner.js";
 import { parseJson } from "../parser/json-parser.js";
-import { validateEngineeringReport } from "../parser/schema-validator.js";
+import { validateModelReport } from "../parser/schema-validator.js";
+import { groundReport } from "../grounding/grounding.service.js";
 import { buildPrompt } from "../prompt/prompt.builder.js";
 import { repairResponse } from "../repair/repair.service.js";
 import { buildMarkdown } from "../report/markdown.service.js";
 import { buildGenerationTrace } from "../trace/trace.service.js";
 import { env } from "../../config/env.js";
 
-import type { EngineeringReport } from "../report/report.types.js";
+import type { ModelReport } from "../report/report.types.js";
 import type { JobContext } from "../../jobs/job.types.js";
 import type {
   AnalysisRequest,
@@ -32,8 +33,8 @@ const BUDGET_RESERVE_CHARS = 20_000;
  * Cleans, parses and validates a raw model response.
  * Throws on invalid JSON or schema mismatch.
  */
-function toReport(rawResponse: string): EngineeringReport {
-  return validateEngineeringReport(
+function toReport(rawResponse: string): ModelReport {
+  return validateModelReport(
     parseJson(cleanJson(rawResponse)),
   );
 }
@@ -108,14 +109,14 @@ export async function analyzeRepository(
 
   job.setStage("VALIDATING_RESPONSE");
 
-  let report: EngineeringReport;
+  let modelReport: ModelReport;
   let finalResponse = generation.text;
   let promptTokens = generation.promptTokens;
   let outputTokens = generation.outputTokens;
   let repairAttempts = 0;
 
   try {
-    report = toReport(generation.text);
+    modelReport = toReport(generation.text);
   } catch (validationError) {
     // Covers both invalid JSON and schema mismatches.
     await job.logger.warn(
@@ -134,8 +135,16 @@ export async function analyzeRepository(
     promptTokens = addTokens(promptTokens, repair.promptTokens);
     outputTokens = addTokens(outputTokens, repair.outputTokens);
 
-    report = toReport(finalResponse);
+    modelReport = toReport(finalResponse);
   }
+
+  // Remove invented citations; attach real code to valid ones.
+  const { report, stats: citations } = groundReport(
+    modelReport,
+    context.files.files,
+  );
+
+  await job.logger.info("Citations checked", citations);
 
   await job.logger.validatedReport(report);
 
@@ -154,6 +163,7 @@ export async function analyzeRepository(
     outputTokens,
     filesIncluded: context.files.files.length,
     filesAvailable: context.files.totalFiles,
+    citations,
     repaired: repairAttempts > 0,
     repairAttempts,
   });

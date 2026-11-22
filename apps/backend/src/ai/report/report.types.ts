@@ -5,7 +5,9 @@
 export type {
   EngineeringReport,
   EvidenceReference,
+  EvidenceSnippet,
   Finding,
   Improvement,
   InterviewQuestion,
+  ModelReport,
 } from "./report.schema.js";

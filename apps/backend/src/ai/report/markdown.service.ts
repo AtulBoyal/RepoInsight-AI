@@ -1,9 +1,40 @@
 import type {
   EngineeringReport,
+  EvidenceReference,
   Finding,
   Improvement,
   InterviewQuestion,
 } from "./report.types.js";
+
+/**
+ * Formats checked citations, with the real code where available.
+ */
+function formatEvidence(evidence: EvidenceReference[]): string {
+  if (evidence.length === 0) {
+    return "";
+  }
+
+  const items = evidence.map((item) => {
+    const location = item.line ? `${item.file}:${item.line}` : item.file;
+    const header = `- \`${location}\` — ${item.description}`;
+
+    if (!item.snippet) {
+      return header;
+    }
+
+    const code = item.snippet.lines
+      .map((text, index) => {
+        const lineNumber = item.snippet!.startLine + index;
+        const marker = lineNumber === item.line ? ">" : " ";
+        return `${marker} ${String(lineNumber).padStart(4)} | ${text}`;
+      })
+      .join("\n");
+
+    return `${header}\n\n  \`\`\`\n${code.replace(/^/gm, "  ")}\n  \`\`\``;
+  });
+
+  return ["", "**Evidence**", "", ...items].join("\n");
+}
 
 /**
  * Formats a bullet list.
@@ -28,21 +59,7 @@ function formatFindings(
 
   return findings
     .map((finding) => {
-      const evidence =
-        finding.evidence.length === 0
-          ? ""
-          : [
-              "",
-              "**Evidence**",
-              ...finding.evidence.map(
-                (item) =>
-                  `- ${item.file}${
-                    item.line
-                      ? `:${item.line}`
-                      : ""
-                  } — ${item.description}`,
-              ),
-            ].join("\n");
+      const evidence = formatEvidence(finding.evidence);
 
       return [
         `### ${finding.title}`,
@@ -66,21 +83,7 @@ function formatImprovements(
 
   return improvements
     .map((item) => {
-      const evidence =
-        item.evidence.length === 0
-          ? ""
-          : [
-              "",
-              "**Evidence**",
-              ...item.evidence.map(
-                (e) =>
-                  `- ${e.file}${
-                    e.line
-                      ? `:${e.line}`
-                      : ""
-                  } — ${e.description}`,
-              ),
-            ].join("\n");
+      const evidence = formatEvidence(item.evidence);
 
       return [
         `## ${item.title}`,
