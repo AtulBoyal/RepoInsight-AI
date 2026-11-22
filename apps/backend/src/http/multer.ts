@@ -2,6 +2,7 @@ import multer from "multer";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { MAX_UPLOAD_SIZE } from "../constants/upload.js";
+import { InvalidArchiveError } from "../repository/errors/InvalidArchiveError.js";
 
 const storage = multer.diskStorage({
   destination: "tmp/uploads",
@@ -13,7 +14,7 @@ const storage = multer.diskStorage({
 
 const fileFilter: multer.Options["fileFilter"] = (_req, file, cb) => {
   if (path.extname(file.originalname).toLowerCase() !== ".zip") {
-    return cb(new Error("Only ZIP files are supported."));
+    return cb(new InvalidArchiveError("Only ZIP files are supported."));
   }
 
   cb(null, true);
