@@ -7,12 +7,13 @@ import type { RepositoryFile } from "../../types/repository.js";
  * so the most informative files fit into the prompt budget first.
  *
  * Tiers (lower is better):
- *  0  root README, manifests and build/deploy config
- *  1  entry points (index/main/app/server/...) near the root
- *  2  a few test files (enough to judge testing practice)
- *  3  other source files, most-imported first
- *  4  remaining tests
- *  5  docs, styles, markup and data files
+ *  0  root README (explains what the project is)
+ *  1  manifests, build/deploy config and CI workflows
+ *  2  entry points (index/main/app/server/...) near the root
+ *  3  a few test files (enough to judge testing practice)
+ *  4  other source files, most-imported first
+ *  5  remaining tests
+ *  6  docs, styles, markup and data files
  *
  * Import counts come from a lightweight regex scan of relative
  * imports in JS/TS and Python. Other languages fall back to
@@ -176,32 +177,35 @@ export function rankFiles(files: RepositoryFile[]): RepositoryFile[] {
     const extension = path.extname(file.name).toLowerCase();
     const depth = depthOf(file.relativePath);
 
-    if (
-      (depth <= 2 && MANIFEST_NAMES.has(file.name)) ||
-      (depth === 0 && /^readme(\.|$)/i.test(file.name)) ||
-      isWorkflowFile(file.relativePath)
-    ) {
+    if (depth === 0 && /^readme(\.|$)/i.test(file.name)) {
       return 0;
     }
 
+    if (
+      (depth <= 2 && MANIFEST_NAMES.has(file.name)) ||
+      isWorkflowFile(file.relativePath)
+    ) {
+      return 1;
+    }
+
     if (!CODE_EXTENSIONS.has(extension)) {
-      return 5;
+      return 6;
     }
 
     if (isTestPath(file.relativePath)) {
       if (earlyTests < MAX_EARLY_TESTS) {
         earlyTests++;
-        return 2;
+        return 3;
       }
 
-      return 4;
+      return 5;
     }
 
     if (depth <= 3 && ENTRY_STEMS.has(stemOf(file.name).toLowerCase())) {
-      return 1;
+      return 2;
     }
 
-    return 3;
+    return 4;
   };
 
   // Deterministic input order so "first N tests" is stable.
