@@ -324,6 +324,13 @@ FRONTEND_URL=https://your-frontend.example
 # Optional: analyses allowed to run at once (extra uploads get HTTP 429)
 MAX_CONCURRENT_JOBS=2
 
+# Optional: rate limits on starting analyses (0 = no limit)
+RATE_LIMIT_PER_HOUR=5     # per visitor (IP address)
+RATE_LIMIT_PER_DAY=100    # whole site
+
+# Optional: reverse proxies in front of the server (Render: 1, direct: 0)
+TRUST_PROXY_HOPS=1
+
 # Optional: prompt size cap; files are ranked by importance and added until it is reached
 MAX_PROMPT_TOKENS=150000
 
@@ -343,6 +350,8 @@ SAVE_DEBUG_ARTIFACTS=false
 | `GET` | `/api/jobs/:id/events` | Server-Sent Events: `progress`, then `completed` (report + markdown) or `failed` (error body). |
 | `GET` | `/api/jobs/:id` | Current job state as JSON. |
 | `GET` | `/api/health` | Health check. |
+
+Starting an analysis is rate limited per visitor and per day for the whole site (HTTP 429 with a message saying when to retry). Only accepted analyses count, and limits are checked before the upload is received.
 
 Each analysis runs as its own job, so concurrent users never see each other's progress. Finished jobs are kept in memory for 30 minutes.
 

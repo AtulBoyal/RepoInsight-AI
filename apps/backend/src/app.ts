@@ -5,8 +5,13 @@ import analyzeRouter from "./routes/analyze.js";
 import healthRouter from "./routes/health.js";
 import jobsRouter from "./routes/jobs.js";
 import { CorsError, toErrorResponse } from "./http/error-response.js";
+import { env } from "./config/env.js";
 
 const app = express();
+
+// Read the visitor's real IP from X-Forwarded-For when running behind
+// a reverse proxy (Render). Used by the rate limits.
+app.set("trust proxy", env.TRUST_PROXY_HOPS);
 
 const allowedOrigins = [
   "http://localhost:5173",

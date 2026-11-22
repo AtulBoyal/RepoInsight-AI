@@ -16,6 +16,21 @@ const envSchema = z.object({
    */
   MAX_CONCURRENT_JOBS: z.coerce.number().int().min(1).default(2),
   /**
+   * Analyses one visitor (IP address) may start per hour. 0 = no limit.
+   */
+  RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(0).default(5),
+  /**
+   * Analyses the whole site may start per day, across all visitors.
+   * A hard ceiling on Gemini spend. 0 = no limit.
+   */
+  RATE_LIMIT_PER_DAY: z.coerce.number().int().min(0).default(100),
+  /**
+   * Number of reverse proxies in front of the server (Render: 1).
+   * Needed to read the visitor's real IP from X-Forwarded-For;
+   * 0 if the server is reached directly.
+   */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
+  /**
    * Upper bound on the prompt size sent to Gemini. Source files are
    * ranked by importance and added until this budget is reached.
    */
