@@ -94,6 +94,7 @@ describe("POST /api/analyze/github", () => {
     expect(vi.mocked(runAnalysisJob)).toHaveBeenCalledWith(
       started.body.jobId,
       { type: "github", repository },
+      { cacheKey: expect.stringContaining(`:github:owner/repo@${"d".repeat(40)}`) },
     );
   });
 

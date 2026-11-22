@@ -31,6 +31,7 @@ export default function HomePage() {
   const {
     analyze,
     analyzeGithub,
+    reanalyze,
     loading,
     error,
     result,
@@ -112,7 +113,14 @@ export default function HomePage() {
 
         {result && (
           <div className="mt-10">
-            <ReportViewer result={result} />
+            <ReportViewer
+              result={result}
+              loading={loading}
+              onReanalyze={() => {
+                setShowProgress(true);
+                reanalyze();
+              }}
+            />
           </div>
         )}
 

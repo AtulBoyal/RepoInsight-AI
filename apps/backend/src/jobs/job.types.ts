@@ -13,6 +13,10 @@ export interface JobResult {
   report: EngineeringReport;
   markdown: string;
   repository: RepositoryInfo;
+  /** When the analysis ran (ISO 8601). Older than now for cached results. */
+  analyzedAt: string;
+  /** True when this result was reused from the cache. */
+  cached: boolean;
 }
 
 /**

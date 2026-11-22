@@ -23,13 +23,9 @@ const { default: app } = await import("../src/app.js");
 
 let server: Server;
 let baseUrl: string;
-let zipBytes: Buffer;
+let uploads = 0;
 
 beforeAll(async () => {
-  zipBytes = await fs.readFile(
-    await createZip([{ name: "repo/index.ts", content: "export {};" }]),
-  );
-
   server = app.listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -44,6 +40,11 @@ afterAll(() => {
  * proxy would add).
  */
 async function upload(ip: string, fileName = "repo.zip") {
+  // A different ZIP each time, so the report cache never applies here.
+  const zipBytes = await fs.readFile(
+    await createZip([{ name: "repo/index.ts", content: `export const n = ${uploads++};` }]),
+  );
+
   const form = new FormData();
   form.append("repository", new Blob([new Uint8Array(zipBytes)]), fileName);
 

@@ -27,4 +27,8 @@ export interface AnalyzeRepositoryResponse {
   report: EngineeringReport;
   markdown: string;
   repository: RepositoryInfo;
+  /** When the analysis ran (ISO 8601). */
+  analyzedAt: string;
+  /** True when the same input was analyzed before and the report reused. */
+  cached: boolean;
 }

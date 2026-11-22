@@ -41,6 +41,15 @@ const envSchema = z.object({
     .optional()
     .transform((value) => value?.trim() || undefined),
   /**
+   * Finished reports kept in memory for reuse when the same GitHub
+   * commit or the same ZIP is analyzed again. 0 = no caching.
+   */
+  REPORT_CACHE_MAX_ENTRIES: z.coerce.number().int().min(0).default(50),
+  /**
+   * How long a cached report is reused, in hours.
+   */
+  REPORT_CACHE_TTL_HOURS: z.coerce.number().positive().default(168),
+  /**
    * Upper bound on the prompt size sent to Gemini. Source files are
    * ranked by importance and added until this budget is reached.
    */

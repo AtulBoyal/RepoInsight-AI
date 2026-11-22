@@ -18,8 +18,14 @@ const api = axios.create({
 export async function startAnalysis(
   file: File,
   onUploadProgress?: (fraction: number) => void,
+  force = false,
 ): Promise<{ jobId: string }> {
   const formData = new FormData();
+
+  if (force) {
+    // Skip the cache and analyze again.
+    formData.append("force", "true");
+  }
 
   formData.append("repository", file);
 
@@ -45,9 +51,11 @@ export async function startAnalysis(
  */
 export async function startGithubAnalysis(
   url: string,
+  force = false,
 ): Promise<{ jobId: string }> {
   const response = await api.post<{ jobId: string }>("/analyze/github", {
     url,
+    ...(force ? { force: true } : {}),
   });
 
   return response.data;

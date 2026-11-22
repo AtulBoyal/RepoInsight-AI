@@ -37,6 +37,8 @@ describe("jobStore", () => {
       report,
       markdown: "# done",
       repository: { name: "demo" },
+      analyzedAt: new Date().toISOString(),
+      cached: false,
     });
     jobStore.fail(job.id, {
       status: 500,

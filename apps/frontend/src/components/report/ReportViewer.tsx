@@ -1,6 +1,7 @@
 import type { AnalyzeRepositoryResponse } from "../../types/report";
 
 import ArchitectureCard from "./ArchitectureCard";
+import CachedResultNotice from "./CachedResultNotice";
 import CodeQualityCard from "./CodeQualityCard";
 import FolderStructureCard from "./FolderStructureCard";
 import ImprovementCard from "./ImprovementCard";
@@ -15,15 +16,27 @@ import WeaknessesCard from "./WeaknessesCard";
 
 interface Props {
   result: AnalyzeRepositoryResponse;
+  loading: boolean;
+  onReanalyze(): void;
 }
 
 export default function ReportViewer({
   result,
+  loading,
+  onReanalyze,
 }: Props) {
   const { report, markdown, repository } = result;
 
   return (
     <div className="space-y-10">
+
+      {result.cached && (
+        <CachedResultNotice
+          analyzedAt={result.analyzedAt}
+          loading={loading}
+          onReanalyze={onReanalyze}
+        />
+      )}
 
       <div className="flex items-center justify-between">
 
