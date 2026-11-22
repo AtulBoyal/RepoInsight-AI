@@ -1,35 +1,24 @@
 import fs from "node:fs/promises";
 
-import {
-  MAX_FILE_CONTENT_CHARS,
-} from "../../constants/repository.js";
-
 import type {
   FilteredRepository,
   RepositoryContent,
   RepositoryFile,
 } from "../../types/repository.js";
 
+/**
+ * Reads the full content of every analyzable file. Files are at most
+ * MAX_FILE_SIZE_BYTES (filtering), so metrics and analyzers see whole
+ * files. Shortening for the prompt happens later, in the AI context.
+ */
 async function readRepositoryFile(
   file: FilteredRepository["files"][number],
 ): Promise<RepositoryFile> {
-  const rawContent = await fs.readFile(
-    file.absolutePath,
-    "utf8",
-  );
-
-  const truncated =
-    rawContent.length > MAX_FILE_CONTENT_CHARS;
-
-  const content = truncated
-    ? rawContent.slice(0, MAX_FILE_CONTENT_CHARS)
-    : rawContent;
+  const content = await fs.readFile(file.absolutePath, "utf8");
 
   return {
     ...file,
     content,
-    size: file.size,
-    truncated,
   };
 }
 

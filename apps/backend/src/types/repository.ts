@@ -24,7 +24,6 @@ export interface RepositoryTree {
 export interface RepositoryFile extends RepositoryEntry {
   content: string;
   size: number;
-  truncated: boolean;
 }
 
 export interface IgnoredRepositoryFile extends RepositoryEntry {
