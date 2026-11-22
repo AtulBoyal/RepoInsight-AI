@@ -1,453 +1,251 @@
 # RepoInsight-AI
 
-> AI-powered repository intelligence platform that analyzes software repositories and generates professional engineering reports covering architecture, code quality, maintainability, resume readiness, and interview preparation.
+> AI engineering reviews for code repositories: architecture, code quality, improvement plan, resume bullets and interview questions, with every claim tied to real lines of code.
+
+[![CI](https://github.com/AtulBoyal/RepoInsight-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/AtulBoyal/RepoInsight-AI/actions/workflows/ci.yml)
+
+**Live demo:** https://repo-insight-ai-ab.vercel.app
 
 <p align="center">
-
-🌐 **Live Demo:** https://repo-insight-ai-ab.vercel.app/
-
+  <img src="docs/screenshots/report.png" alt="An engineering review with scores, findings and an expanded code citation" width="900">
 </p>
 
----
-
-# Overview
-
-RepoInsight-AI automatically analyzes software repositories and generates comprehensive engineering reports using Google's Gemini models.
-
-Rather than simply summarizing source code, RepoInsight-AI performs repository traversal, static analysis, metadata extraction, architecture reasoning, and AI-powered engineering evaluation to provide actionable technical feedback similar to an experienced software engineer performing a design review.
-
-Each generated report includes:
-
-- Executive Summary
-- Technology Stack Detection
-- Repository Statistics
-- Architecture Review
-- Code Quality Assessment
-- Engineering Strengths
-- Engineering Weaknesses
-- Actionable Improvement Recommendations
-- Resume Highlights
-- Interview Questions
-- Downloadable Markdown Report
+Paste a public GitHub URL or upload a ZIP. RepoInsight-AI extracts the code safely, runs static analysis, picks the most informative files for the model, and asks Gemini for a structured review. Every file and line the model cites is then checked against the actual code, and the real snippet is shown next to it.
 
 ---
 
-# Features
+## What a report contains
 
-## Intelligent Repository Analysis
+| Section                  | Details                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| Summary and tech stack   | Purpose of the project; languages, frameworks, databases, tools, infrastructure   |
+| Architecture             | Strengths, weaknesses, scalability, maintainability                               |
+| Scores                   | Folder structure, code quality and resume value, 0 to 10 with a calibrated rubric |
+| Strengths and weaknesses | Each with evidence: file, line and the real code snippet                          |
+| Improvement plan         | Problem, recommendation, expected impact and priority                             |
+| Resume feedback          | Ready-to-use resume bullets                                                       |
+| Interview questions      | Based on decisions in this repository, with expected answers                      |
 
-- Analyze a public GitHub repository by URL (any branch, tag or commit), or upload a ZIP archive
-- Automatic repository extraction
-- Repository root detection
-- Recursive repository traversal
-- Repository metadata generation
-- Smart source code filtering
-- Programming language detection
-- Framework detection
-
----
-
-## Smart Repository Filtering
-
-Before AI analysis, the platform automatically ignores unnecessary files including:
-
-- `node_modules`
-- `.git`
-- `dist`
-- `build`
-- `.next`
-- `coverage`
-- generated artifacts
-- binary assets
-
-Only meaningful source code is processed, significantly reducing token usage while improving AI response quality.
+Reports can be downloaded as Markdown or shared with a link.
 
 ---
 
-## AI Engineering Review
+## How it works
 
-Powered by **Google Gemini 2.5 Flash**
+```mermaid
+flowchart LR
+    UI["Web app<br/>React on Vercel"] -->|"ZIP or GitHub URL"| API["Express API<br/>on Render"]
+    API -->|"job id"| UI
+    API -.->|"live progress<br/>Server-Sent Events"| UI
+    API --> GH[("GitHub API")]
+    API --> JOB["Background job"]
 
-RepoInsight-AI evaluates:
+    subgraph Pipeline
+        JOB --> EX["Safe extraction"]
+        EX --> FI["Filter and read files"]
+        FI --> SA["Static analysis<br/>TypeScript compiler API"]
+        SA --> RK["Rank files<br/>fit token budget"]
+        RK --> AI["Gemini<br/>schema-enforced JSON"]
+        AI --> VA["Validate and repair"]
+        VA --> CI["Check citations<br/>attach snippets"]
+    end
 
-- Software Architecture
-- Folder Organization
-- Code Quality
-- Engineering Practices
-- Maintainability
-- Scalability
-- Design Decisions
-- Resume Readiness
+    CI --> DB[("Postgres<br/>saved reports and cache")]
+```
 
-Every AI response is validated against a schema, and every file and line the model cites is checked against the code it was shown. Invented references are removed, and valid ones include the real code snippet.
-
----
-
-## Professional Engineering Reports
-
-Automatically generates structured engineering reports containing:
-
-- Executive Summary
-- Technology Stack
-- Repository Statistics
-- Architecture Review
-- Code Quality Analysis
-- Engineering Strengths
-- Engineering Weaknesses
-- Improvement Suggestions
-- Resume Feedback
-- Interview Questions
-
-Reports can be downloaded as professional Markdown documents.
+1. **Start:** `POST /api/analyze` (ZIP) or `POST /api/analyze/github` returns a job id immediately.
+2. **Follow:** the browser subscribes to `GET /api/jobs/:id/events` and receives each stage, then the report.
+3. **Reuse:** if the same GitHub commit or the same ZIP was analyzed before, the saved report is returned instantly.
 
 ---
 
-## Real-Time Analysis Progress
+## Engineering decisions
 
-Provides live progress updates for each analysis job, streamed with Server-Sent Events.
+### Treat every upload as hostile
 
-Stages include:
+**Problem:** a ZIP can contain symlinks to server files, `../` paths, or a few KB that expand to gigabytes. **Built:** a streaming extractor that skips symlinks, rejects unsafe paths, never writes `node_modules` or `.git` to disk, and stops at size and file-count limits. Secret files (`.env`, private keys) are never read, so they never reach the model or the logs. Uploads and extracted files are deleted after every analysis.
 
-- Upload Validation
-- Repository Extraction
-- Repository Traversal
-- Metadata Generation
-- Static Analysis
-- AI Context Building
-- AI Review
-- Response Validation
-- Markdown Generation
+### Make the model's claims checkable
 
----
+**Problem:** LLM reviews cite files and lines that do not exist. **Built:**
 
-## Intelligent Repository Validation
+- Gemini's structured output, generated from the same Zod schema that validates the response, with one repair attempt if it still fails
+- Line numbers in the prompt, so the model cites instead of counting
+- A grounding step that drops citations of files the model was not shown, moves off-by-a-few lines onto the code they quote, and attaches the real snippet
 
-Supports two independent validation stages:
+**Result:** on the same repository, citations with a valid file and line rose from **5 of 31** before line numbering to **83 of 102** after (3 runs), and citations of files that do not exist are removed before users see them.
 
-### Upload Limit
+### Fit large repositories into one prompt
 
-- Maximum ZIP Upload: **500 MB**
+Files are ranked by importance (README and manifests, entry points, then the most-imported modules from a lightweight import graph) and added until a token budget is reached. The model sees which files were left out, so it does not guess about them.
 
-### Analysis Limit
+### Real static analysis instead of regexes
 
-- Maximum Analyzable Source Code: **50 MB**
+JavaScript and TypeScript are parsed with the TypeScript compiler API: exact function lengths, real `any` and type-assertion nodes (`as const` excluded), console and `process.exit` calls. The same facts feed both the metrics and the evidence locations, so they always agree.
 
-This enables uploading repositories containing large dependency folders while analyzing only relevant source code.
+### Long-running work over HTTP
 
-Dependency and build folders (`node_modules`, `.git`, `dist`, ...) are skipped during extraction. Symlinks are never followed, secret files such as `.env` and private keys are never read, and uploads plus extracted files are deleted after every analysis.
+An analysis takes about a minute. Each one runs as a background job with its own progress, logs and result, streamed with Server-Sent Events, so concurrent users never see each other's state and a reconnecting browser gets the current state immediately.
 
----
+### Control cost on a public demo
 
-## Robust Error Handling
+- Rate limits per visitor and per day, checked before the upload is received; only new analyses count
+- A report cache keyed by GitHub commit SHA or ZIP SHA-256 plus an analysis version (model, prompt and schema fingerprint), so changing the prompt invalidates old reports automatically
+- Identical concurrent requests share one job
+- A concurrency cap on running analyses
 
-Gracefully handles:
+### Sharing without leaking code
 
-- Invalid ZIP archives
-- Uploads larger than 500 MB
-- Oversized repositories
-- Corrupted archives
-- AI service failures
-- Network failures
-- Invalid AI responses
+Reports can contain snippets of private code, so links are opt-in: a report gets a link only when the user clicks Share. Share ids are 128-bit random, pages are not indexed, only the sharing browser can unshare (its token is stored hashed), and reports are deleted after 30 days.
+
+### Tested where it matters
+
+92 backend tests (Vitest) cover ZIP attacks, secret filtering, citation grounding, the parser, file ranking, rate limits, caching, GitHub handling and sharing. Database tests run on PGlite (Postgres in-process). GitHub Actions runs typecheck, tests, lint, builds and a schema sync check on every push. An evaluation script measures how much scores and citations vary between runs.
 
 ---
 
-# Technology Stack
+## Screenshots
 
-## Frontend
+| Analyze a GitHub URL or upload a ZIP                                                                        | Live progress                                                                                                  |
+| ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| <img src="docs/screenshots/home.png" alt="Home page with the Upload ZIP and GitHub URL toggle" width="440"> | <img src="docs/screenshots/progress.png" alt="Progress dialog showing the current analysis stage" width="440"> |
 
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- Axios
-- Lucide React
-
-## Backend
-
-- Node.js
-- Express.js
-- TypeScript
-- Multer
-- yauzl
-- Zod
-
-## AI
-
-- Google Gemini 2.5 Flash
-
-## Deployment
-
-- Vercel
-- Render
+| Evidence with real code                                                                                                      | Shared report                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| <img src="docs/screenshots/evidence.png" alt="A weakness with an expanded citation showing numbered code lines" width="440"> | <img src="docs/screenshots/shared.png" alt="A shared report page opened from a link" width="440"> |
 
 ---
 
-# Project Structure
+## Tech stack
+
+| Area           | Technologies                                                        |
+| -------------- | ------------------------------------------------------------------- |
+| Frontend       | React 19, TypeScript, Vite, Tailwind CSS                            |
+| Backend        | Node.js, Express 5, TypeScript, Zod, yauzl, TypeScript compiler API |
+| AI             | Google Gemini 2.5 Flash with structured output                      |
+| Data           | Postgres (Neon) via `pg`; PGlite in tests                           |
+| Testing and CI | Vitest, GitHub Actions                                              |
+| Hosting        | Vercel (frontend), Render (backend)                                 |
+
+---
+
+## Project structure
 
 ```text
 apps/
-├── frontend/
-└── backend/
+├── backend/
+│   ├── src/
+│   │   ├── repository/   extraction, filtering, metrics, static analysis
+│   │   ├── ai/           context, prompt, Gemini client, validation, grounding, Markdown
+│   │   ├── github/       URL parsing and repository download
+│   │   ├── jobs/         background jobs and progress
+│   │   ├── cache/        report cache (memory or Postgres)
+│   │   ├── sharing/      share links
+│   │   ├── db/           Postgres connection and schema
+│   │   └── routes/       HTTP endpoints
+│   ├── test/             Vitest suites
+│   └── scripts/eval.ts   consistency evaluation
+└── frontend/
+    └── src/              pages, components, API client
+scripts/                  report schema sync
 ```
 
-The frontend provides the user interface and repository upload experience.
-
-The backend performs repository processing, static analysis, AI orchestration, validation, progress tracking, logging, and report generation.
-
-## Shared Report Schema
-
-The report format is defined once, as a Zod schema in `apps/backend/src/ai/report/report.schema.ts`.
-The frontend uses a generated copy (`apps/frontend/src/types/report.schema.generated.ts`), because each app deploys from its own folder.
-
-After changing the schema, run from the repository root:
-
-```bash
-npm run sync:schema    # update the frontend copy
-npm run check:schema   # fails if the copy is out of date
-```
+The report format is defined once, as a Zod schema in `apps/backend/src/ai/report/report.schema.ts`. Each app deploys from its own folder, so the frontend uses a generated copy. After changing the schema, run `npm run sync:schema` from the repository root (`npm run check:schema` fails in CI if the copy is stale).
 
 ---
 
-# Engineering Pipeline
-
-```text
-Repository ZIP
-        │
-        ▼
-Upload Validation
-        │
-        ▼
-Repository Extraction
-        │
-        ▼
-Repository Traversal
-        │
-        ▼
-Repository Filtering
-        │
-        ▼
-Metadata Generation
-        │
-        ▼
-Static Analysis
-        │
-        ▼
-AI Context Builder
-        │
-        ▼
-Gemini Engineering Review
-        │
-        ▼
-Response Validation
-        │
-        ▼
-Markdown Report Generation
-        │
-        ▼
-Professional Engineering Report
-```
-
----
-
-# Running Locally
-
-## Clone Repository
+## Running locally
 
 ```bash
 git clone https://github.com/AtulBoyal/RepoInsight-AI.git
-
 cd RepoInsight-AI
 ```
 
-Each app has its own dependencies and `package-lock.json`, and is deployed from its own folder (`apps/backend` on Render, `apps/frontend` on Vercel). Use npm.
-
-## Backend
+**Backend** (http://localhost:5000):
 
 ```bash
 cd apps/backend
-
 npm ci
 cp .env.example .env    # then set GEMINI_API_KEY
-
-npm run dev             # http://localhost:5000
+npm run dev
 ```
 
-## Frontend
+**Frontend** (http://localhost:5173):
 
 ```bash
 cd apps/frontend
-
 npm ci
-
-npm run dev             # http://localhost:5173
+npm run dev
 ```
 
-The frontend calls `http://localhost:5000/api` by default. Set `VITE_API_URL` to point it elsewhere.
+The frontend calls `http://localhost:5000/api` by default; set `VITE_API_URL` to change it. Without `DATABASE_URL`, reports are cached in memory and sharing is turned off.
 
----
-
-# Testing
+### Tests
 
 ```bash
 cd apps/backend
 npm run typecheck   # source, tests and scripts
-npm test            # Vitest: extraction safety, filtering, citations, analyzers, jobs, pipeline
+npm test
 ```
 
-GitHub Actions runs the backend checks, the frontend lint and build, and the report schema sync check on every push and pull request.
-
-## Measuring Consistency
-
-The evaluation script analyzes the same repositories several times with the real Gemini API and reports how much scores and citations vary:
+### Measuring consistency
 
 ```bash
 cd apps/backend
-npm run eval -- --runs 3 path/to/repo1.zip path/to/repo2.zip
+npm run eval -- --runs 3 path/to/repo.zip
 ```
 
-Results are saved to `apps/backend/eval-results/`. Each run is a paid Gemini call.
+Runs the real pipeline several times (paid Gemini calls) and reports the spread of scores and citation accuracy. Results are saved to `apps/backend/eval-results/`.
 
 ---
 
-# Environment Variables
+## Configuration
 
-## Backend
+Backend settings (`apps/backend/.env`). Only `GEMINI_API_KEY` is required.
 
-```env
-GEMINI_API_KEY=your_api_key
-GEMINI_MODEL=gemini-2.5-flash
-
-# Optional: origin of the deployed frontend, allowed by CORS
-FRONTEND_URL=https://your-frontend.example
-
-# Optional: analyses allowed to run at once (extra uploads get HTTP 429)
-MAX_CONCURRENT_JOBS=2
-
-# Optional: GitHub token for analyzing by URL. Without it GitHub allows
-# 60 API requests/hour from the server's IP; with it, 5,000. A fine-grained
-# token with no extra permissions is enough (public repositories only).
-# GITHUB_TOKEN=github_pat_...
-
-# Optional: Postgres (e.g. Neon) for saved reports, share links and a
-# cache that survives restarts. Tables are created on startup.
-# DATABASE_URL=postgresql://user:password@host/db?sslmode=require
-REPORT_RETENTION_DAYS=30
-
-# Optional: reuse reports when the same GitHub commit or the same ZIP is
-# analyzed again (in memory; cleared on restart). 0 entries = no caching.
-REPORT_CACHE_MAX_ENTRIES=50
-REPORT_CACHE_TTL_HOURS=168
-
-# Optional: rate limits on starting analyses (0 = no limit)
-RATE_LIMIT_PER_HOUR=5     # per visitor (IP address)
-RATE_LIMIT_PER_DAY=100    # whole site
-
-# Optional: reverse proxies in front of the server (Render: 1, direct: 0)
-TRUST_PROXY_HOPS=1
-
-# Optional: prompt size cap; files are ranked by importance and added until it is reached
-MAX_PROMPT_TOKENS=150000
-
-# Optional: sampling temperature 0-2 (unset = model default)
-GEMINI_TEMPERATURE=0.2
-
-# Optional: save full prompts and model responses (they contain the
-# uploaded source code) to the log folder. Keep false in production.
-SAVE_DEBUG_ARTIFACTS=false
-```
-
-# API
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/analyze` | Upload a ZIP (`repository` form field; optional `force=true`). |
-| `POST` | `/api/analyze/github` | JSON `{ "url": "https://github.com/owner/repo", "force"?: true }`. Public repositories only; checked on GitHub before the job starts. |
-| `GET` | `/api/jobs/:id/events` | Server-Sent Events: `progress`, then `completed` (report + markdown) or `failed` (error body). |
-| `GET` | `/api/jobs/:id` | Current job state as JSON. |
-| `POST` | `/api/reports/:reportId/share` | Create a public link for a saved report. Returns `{ shareId, expiresAt, ownerToken }` (the token only the first time). |
-| `GET` | `/api/shared/:shareId` | A shared report. |
-| `DELETE` | `/api/shared/:shareId` | Remove the link. Header `Authorization: Bearer <ownerToken>`. |
-| `GET` | `/api/health` | Health check. |
-
-## Saved and Shared Reports
-
-With `DATABASE_URL` set, every finished report is saved in Postgres for `REPORT_RETENTION_DAYS` (default 30) and also serves as the report cache, so it survives restarts.
-
-A report becomes public only when the user clicks **Share**: it then gets a link like `/r/<shareId>` (128-bit random id, not indexed by search engines). The browser that shared it keeps a secret token (only its SHA-256 is stored) and can **Stop sharing** at any time. Expired reports and links are deleted automatically.
-
-Without a database, reports are cached in memory only and sharing is unavailable.
-
-Both analyze endpoints return a `jobId` to follow:
-
-- `202` a new analysis started
-- `200 { cached: true }` the same GitHub commit or the same ZIP (by SHA-256) was analyzed before, so the stored report is returned instantly
-- `200 { joined: true }` the same input is already being analyzed, so the request shares that job
-
-Cached reports are keyed by an analysis version (model, settings, prompt and schema), so changing any of those stops old reports from being reused. `force` skips the cache.
-
-Starting an analysis is rate limited per visitor and per day for the whole site (HTTP 429 with a message saying when to retry). Only new analyses (`202`) count, not cached or joined results, and limits are checked before the upload is received.
-
-Each analysis runs as its own job, so concurrent users never see each other's progress. Finished jobs are kept in memory for 30 minutes.
+| Variable                   | Default            | Purpose                                                                             |
+| -------------------------- | ------------------ | ----------------------------------------------------------------------------------- |
+| `GEMINI_API_KEY`           |                    | Gemini API key (required)                                                           |
+| `GEMINI_MODEL`             | `gemini-2.5-flash` | Model used for reviews                                                              |
+| `GEMINI_TEMPERATURE`       | model default      | Sampling temperature, 0 to 2                                                        |
+| `FRONTEND_URL`             |                    | Deployed frontend origin, allowed by CORS                                           |
+| `DATABASE_URL`             |                    | Postgres connection string; enables saved reports and share links                   |
+| `REPORT_RETENTION_DAYS`    | `30`               | How long saved reports and links are kept                                           |
+| `GITHUB_TOKEN`             |                    | Raises GitHub's API limit from 60 to 5,000 requests per hour; no permissions needed |
+| `RATE_LIMIT_PER_HOUR`      | `5`                | New analyses per visitor per hour (0 = no limit)                                    |
+| `RATE_LIMIT_PER_DAY`       | `100`              | New analyses for the whole site per day (0 = no limit)                              |
+| `MAX_CONCURRENT_JOBS`      | `2`                | Analyses running at once                                                            |
+| `MAX_PROMPT_TOKENS`        | `150000`           | Prompt budget; files are ranked and added until reached                             |
+| `REPORT_CACHE_MAX_ENTRIES` | `50`               | Reports cached in memory when there is no database (0 = off)                        |
+| `REPORT_CACHE_TTL_HOURS`   | `168`              | How long in-memory cached reports are reused                                        |
+| `TRUST_PROXY_HOPS`         | `1`                | Reverse proxies in front of the server (Render: 1)                                  |
+| `SAVE_DEBUG_ARTIFACTS`     | `false`            | Save prompts and responses (contain source code) to the log folder                  |
 
 ---
 
-# Screenshots
+## API
 
-## Home Page
+| Method   | Path                           | Description                                                                            |
+| -------- | ------------------------------ | -------------------------------------------------------------------------------------- |
+| `POST`   | `/api/analyze`                 | Upload a ZIP (`repository` form field; optional `force=true` to skip the cache)        |
+| `POST`   | `/api/analyze/github`          | `{ "url": "https://github.com/owner/repo", "force"?: true }`; public repositories only |
+| `GET`    | `/api/jobs/:id/events`         | Server-Sent Events: `progress`, then `completed` or `failed`                           |
+| `GET`    | `/api/jobs/:id`                | Current job state                                                                      |
+| `POST`   | `/api/reports/:reportId/share` | Create a share link; returns `{ shareId, expiresAt, ownerToken }`                      |
+| `GET`    | `/api/shared/:shareId`         | A shared report                                                                        |
+| `DELETE` | `/api/shared/:shareId`         | Remove a link (`Authorization: Bearer <ownerToken>`)                                   |
+| `GET`    | `/api/health`                  | Health check                                                                           |
 
-> *(Add Screenshot)*
-
----
-
-## Generated Engineering Report
-
-> *(Add Screenshot)*
-
----
-
-## Repository Size Validation
-
-> *(Add Screenshot)*
+The analyze endpoints answer `202` for a new analysis, `200 { cached: true }` for a saved report, and `200 { joined: true }` when the same input is already being analyzed. Errors are JSON with an `error` code and a readable `message`.
 
 ---
 
-# Future Roadmap
+## Roadmap
 
-## Version 1.1
-
-- Drag & Drop Uploads
-- Improved Language Detection
-- Repository Metrics Dashboard
-
-## Version 1.2
-
-- Repository Scoring
-- Dependency Analysis
-- Security Analysis
-- Multi-Report Export
-
-## Version 2.0
-
-- User Authentication
-- Analysis History
-- GitHub OAuth
-- Repository Comparison
-- Team Workspaces
-- Background Jobs
-- CI/CD Integration
-- Multi-LLM Support
-
----
-
-# Why RepoInsight-AI?
-
-Understanding an unfamiliar repository takes time—even for experienced software engineers.
-
-RepoInsight-AI accelerates this process by combining repository analysis, static code analysis, and AI reasoning to generate structured engineering insights that help developers improve project quality, prepare for interviews, strengthen resumes, and understand unfamiliar codebases faster.
-
----
-
-# License
-
-MIT License
+- Parser-based analysis for Python (tree-sitter)
+- Security findings: committed secrets (gitleaks) and vulnerable dependencies (osv-scanner)
+- Frontend component tests
+- Faster first request after the free-tier server sleeps
+- Accounts with analysis history
+- Repository comparison
+- Support for other LLM providers
