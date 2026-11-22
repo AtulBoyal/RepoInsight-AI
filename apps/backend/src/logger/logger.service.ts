@@ -1,11 +1,24 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { env } from "../config/env.js";
 import { LOG_DIRECTORY } from "./logger.constants.js";
 
 import type {
   LogEntry,
 } from "./logger.types.js";
+
+function serialize(data: unknown): unknown {
+  if (data instanceof Error) {
+    return {
+      name: data.name,
+      message: data.message,
+      stack: data.stack,
+    };
+  }
+
+  return data;
+}
 
 class LoggerService {
   private sessionDirectory = "";
@@ -37,13 +50,9 @@ class LoggerService {
       `[${entry.level}]`,
       entry.message,
       "",
-      entry.data
-        ? JSON.stringify(
-            entry.data,
-            null,
-            2,
-          )
-        : "",
+      entry.data === undefined
+        ? ""
+        : JSON.stringify(serialize(entry.data), null, 2),
       "",
     ].join("\n");
 
@@ -90,6 +99,8 @@ class LoggerService {
   }
 
   async prompt(prompt: string) {
+    if (!env.SAVE_DEBUG_ARTIFACTS) return;
+
     await fs.writeFile(
       path.join(
         this.sessionDirectory,
@@ -102,6 +113,8 @@ class LoggerService {
   async geminiResponse(
     response: unknown,
   ) {
+    if (!env.SAVE_DEBUG_ARTIFACTS) return;
+
     await fs.writeFile(
       path.join(
         this.sessionDirectory,
@@ -118,6 +131,8 @@ class LoggerService {
   async validatedReport(
     report: unknown,
   ) {
+    if (!env.SAVE_DEBUG_ARTIFACTS) return;
+
     await fs.writeFile(
       path.join(
         this.sessionDirectory,
@@ -134,6 +149,8 @@ class LoggerService {
   async markdown(
     markdown: string,
   ) {
+    if (!env.SAVE_DEBUG_ARTIFACTS) return;
+
     await fs.writeFile(
       path.join(
         this.sessionDirectory,
