@@ -1,3 +1,5 @@
+import type { TypeScriptPatternType } from "../static-analysis/typescript-patterns.js";
+
 /**
  * Base location inside a repository.
  */
@@ -33,12 +35,7 @@ export interface LoggingEvidence extends SourceLocation {
  */
 export interface TypeScriptEvidence
   extends SourceLocation {
-  type:
-    | "any"
-    | "unknown"
-    | "ts-ignore"
-    | "eslint-disable"
-    | "type-assertion";
+  type: TypeScriptPatternType;
 }
 
 /**

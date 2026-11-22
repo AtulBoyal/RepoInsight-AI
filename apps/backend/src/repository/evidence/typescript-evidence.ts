@@ -2,39 +2,12 @@ import path from "node:path";
 
 import type { RepositoryFile } from "../../types/repository.js";
 import type { TypeScriptEvidence } from "./evidence.types.js";
+import { matchTypeScriptLine } from "../static-analysis/typescript-patterns.js";
 
 const SUPPORTED_EXTENSIONS = new Set([
   ".ts",
   ".tsx",
 ]);
-
-interface Pattern {
-  type: TypeScriptEvidence["type"];
-  regex: RegExp;
-}
-
-const PATTERNS: Pattern[] = [
-  {
-    type: "any",
-    regex: /\bany\b/,
-  },
-  {
-    type: "unknown",
-    regex: /\bunknown\b/,
-  },
-  {
-    type: "ts-ignore",
-    regex: /@ts-ignore/,
-  },
-  {
-    type: "eslint-disable",
-    regex: /eslint-disable/,
-  },
-  {
-    type: "type-assertion",
-    regex: /\bas\s+[A-Za-z0-9_<>{}\[\]|,& ]+/,
-  },
-];
 
 /**
  * Extracts TypeScript-specific evidence from the repository.
@@ -62,15 +35,11 @@ export function buildTypeScriptEvidence(
     ) {
       const line = lines[index];
 
-      for (const pattern of PATTERNS) {
-        if (!pattern.regex.test(line)) {
-          continue;
-        }
-
+      for (const type of matchTypeScriptLine(line)) {
         evidence.push({
           file: file.relativePath,
           line: index + 1,
-          type: pattern.type,
+          type,
         });
       }
     }

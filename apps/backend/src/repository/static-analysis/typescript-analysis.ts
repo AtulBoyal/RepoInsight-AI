@@ -2,33 +2,18 @@ import path from "node:path";
 
 import type { RepositoryFile } from "../../types/repository.js";
 import type { TypeScriptAnalysis } from "./analysis.types.js";
+import { matchTypeScriptLine } from "./typescript-patterns.js";
 
 const SUPPORTED_EXTENSIONS = new Set([
   ".ts",
   ".tsx",
 ]);
 
-interface Counters {
-  anyUsages: number;
-  unknownUsages: number;
-  typeAssertions: number;
-  tsIgnoreCount: number;
-  eslintDisableCount: number;
-}
-
-function countMatches(
-  text: string,
-  regex: RegExp,
-): number {
-  return text.match(regex)?.length ?? 0;
-}
-
 export function buildTypeScriptAnalysis(
   files: RepositoryFile[],
 ): TypeScriptAnalysis {
-  const counters: Counters = {
+  const counters: TypeScriptAnalysis = {
     anyUsages: 0,
-    unknownUsages: 0,
     typeAssertions: 0,
     tsIgnoreCount: 0,
     eslintDisableCount: 0,
@@ -43,40 +28,25 @@ export function buildTypeScriptAnalysis(
       continue;
     }
 
-    const content = file.content;
-
-    counters.anyUsages += countMatches(
-      content,
-      /\bany\b/g,
-    );
-
-    counters.unknownUsages += countMatches(
-      content,
-      /\bunknown\b/g,
-    );
-
-    counters.typeAssertions += countMatches(
-      content,
-      /\bas\s+[A-Za-z0-9_<>{}\[\]|,& ]+/g,
-    );
-
-    counters.tsIgnoreCount += countMatches(
-      content,
-      /@ts-ignore/g,
-    );
-
-    counters.eslintDisableCount += countMatches(
-      content,
-      /eslint-disable/g,
-    );
+    for (const line of file.content.split(/\r?\n/)) {
+      for (const match of matchTypeScriptLine(line)) {
+        switch (match) {
+          case "any":
+            counters.anyUsages++;
+            break;
+          case "type-assertion":
+            counters.typeAssertions++;
+            break;
+          case "ts-ignore":
+            counters.tsIgnoreCount++;
+            break;
+          case "eslint-disable":
+            counters.eslintDisableCount++;
+            break;
+        }
+      }
+    }
   }
 
-  return {
-    anyUsages: counters.anyUsages,
-    unknownUsages: counters.unknownUsages,
-    typeAssertions: counters.typeAssertions,
-    tsIgnoreCount: counters.tsIgnoreCount,
-    eslintDisableCount:
-      counters.eslintDisableCount,
-  };
+  return counters;
 }
