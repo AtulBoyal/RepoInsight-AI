@@ -195,6 +195,18 @@ The frontend provides the user interface and repository upload experience.
 
 The backend performs repository processing, static analysis, AI orchestration, validation, progress tracking, logging, and report generation.
 
+## Shared Report Schema
+
+The report format is defined once, as a Zod schema in `apps/backend/src/ai/report/report.schema.ts`.
+The frontend uses a generated copy (`apps/frontend/src/types/report.schema.generated.ts`), because each app deploys from its own folder.
+
+After changing the schema, run from the repository root:
+
+```bash
+npm run sync:schema    # update the frontend copy
+npm run check:schema   # fails if the copy is out of date
+```
+
 ---
 
 # Engineering Pipeline
