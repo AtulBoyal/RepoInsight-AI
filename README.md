@@ -329,6 +329,11 @@ MAX_CONCURRENT_JOBS=2
 # token with no extra permissions is enough (public repositories only).
 # GITHUB_TOKEN=github_pat_...
 
+# Optional: reuse reports when the same GitHub commit or the same ZIP is
+# analyzed again (in memory; cleared on restart). 0 entries = no caching.
+REPORT_CACHE_MAX_ENTRIES=50
+REPORT_CACHE_TTL_HOURS=168
+
 # Optional: rate limits on starting analyses (0 = no limit)
 RATE_LIMIT_PER_HOUR=5     # per visitor (IP address)
 RATE_LIMIT_PER_DAY=100    # whole site
@@ -351,13 +356,21 @@ SAVE_DEBUG_ARTIFACTS=false
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/analyze` | Upload a ZIP (`repository` form field). Returns `202 { jobId }`. |
-| `POST` | `/api/analyze/github` | JSON `{ "url": "https://github.com/owner/repo" }`. Public repositories only; checked on GitHub before the job starts. Returns `202 { jobId, repository }`. |
+| `POST` | `/api/analyze` | Upload a ZIP (`repository` form field; optional `force=true`). |
+| `POST` | `/api/analyze/github` | JSON `{ "url": "https://github.com/owner/repo", "force"?: true }`. Public repositories only; checked on GitHub before the job starts. |
 | `GET` | `/api/jobs/:id/events` | Server-Sent Events: `progress`, then `completed` (report + markdown) or `failed` (error body). |
 | `GET` | `/api/jobs/:id` | Current job state as JSON. |
 | `GET` | `/api/health` | Health check. |
 
-Starting an analysis is rate limited per visitor and per day for the whole site (HTTP 429 with a message saying when to retry). Only accepted analyses count, and limits are checked before the upload is received.
+Both analyze endpoints return a `jobId` to follow:
+
+- `202` a new analysis started
+- `200 { cached: true }` the same GitHub commit or the same ZIP (by SHA-256) was analyzed before, so the stored report is returned instantly
+- `200 { joined: true }` the same input is already being analyzed, so the request shares that job
+
+Cached reports are keyed by an analysis version (model, settings, prompt and schema), so changing any of those stops old reports from being reused. `force` skips the cache.
+
+Starting an analysis is rate limited per visitor and per day for the whole site (HTTP 429 with a message saying when to retry). Only new analyses (`202`) count, not cached or joined results, and limits are checked before the upload is received.
 
 Each analysis runs as its own job, so concurrent users never see each other's progress. Finished jobs are kept in memory for 30 minutes.
 
