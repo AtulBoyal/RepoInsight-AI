@@ -4,6 +4,7 @@ import cors from "cors";
 import analyzeRouter from "./routes/analyze.js";
 import healthRouter from "./routes/health.js";
 import jobsRouter from "./routes/jobs.js";
+import reportsRouter from "./routes/reports.js";
 import { CorsError, toErrorResponse } from "./http/error-response.js";
 import { env } from "./config/env.js";
 
@@ -35,6 +36,8 @@ app.use(express.json());
 app.use("/api", analyzeRouter);
 
 app.use("/api/jobs", jobsRouter);
+
+app.use("/api", reportsRouter);
 
 app.use("/api/health", healthRouter);
 
