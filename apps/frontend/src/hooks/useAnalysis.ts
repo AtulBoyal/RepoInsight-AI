@@ -50,6 +50,11 @@ export function useAnalysis() {
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
+  // The last thing analyzed, so a cached report can be re-analyzed.
+  const lastRequestRef = useRef<
+    { type: "zip"; file: File } | { type: "github"; url: string } | null
+  >(null);
+
   useEffect(() => () => unsubscribeRef.current?.(), []);
 
   function reset() {
@@ -86,9 +91,10 @@ export function useAnalysis() {
     setProgress(FAILED);
   }
 
-  async function analyze(file: File) {
+  async function analyze(file: File, force = false) {
     unsubscribeRef.current?.();
     reset();
+    lastRequestRef.current = { type: "zip", file };
 
     if (file.size > MAX_UPLOAD_SIZE) {
       setUploadTooLargeError(UPLOAD_TOO_LARGE);
@@ -105,13 +111,17 @@ export function useAnalysis() {
     let jobId: string;
 
     try {
-      ({ jobId } = await startAnalysis(file, (fraction) => {
-        setProgress({
-          stage: "UPLOADING",
-          message: `Uploading repository... ${Math.round(fraction * 100)}%`,
-          percentage: Math.round(fraction * 5),
-        });
-      }));
+      ({ jobId } = await startAnalysis(
+        file,
+        (fraction) => {
+          setProgress({
+            stage: "UPLOADING",
+            message: `Uploading repository... ${Math.round(fraction * 100)}%`,
+            percentage: Math.round(fraction * 5),
+          });
+        },
+        force,
+      ));
     } catch (requestError) {
       if (axios.isAxiosError(requestError)) {
         if (
@@ -171,11 +181,27 @@ export function useAnalysis() {
   }
 
   /**
+   * Runs the last analysis again, skipping the cache.
+   */
+  function reanalyze() {
+    const last = lastRequestRef.current;
+
+    if (!last) return;
+
+    if (last.type === "zip") {
+      void analyze(last.file, true);
+    } else {
+      void analyzeGithub(last.url, true);
+    }
+  }
+
+  /**
    * Analyzes a public GitHub repository by URL.
    */
-  async function analyzeGithub(url: string) {
+  async function analyzeGithub(url: string, force = false) {
     unsubscribeRef.current?.();
     reset();
+    lastRequestRef.current = { type: "github", url };
 
     setLoading(true);
     setProgress({
@@ -187,7 +213,7 @@ export function useAnalysis() {
     let jobId: string;
 
     try {
-      ({ jobId } = await startGithubAnalysis(url));
+      ({ jobId } = await startGithubAnalysis(url, force));
     } catch (requestError) {
       if (axios.isAxiosError(requestError) && requestError.response) {
         handleFailure(
@@ -217,6 +243,7 @@ export function useAnalysis() {
     progress,
     analyze,
     analyzeGithub,
+    reanalyze,
     reset,
   };
 }
