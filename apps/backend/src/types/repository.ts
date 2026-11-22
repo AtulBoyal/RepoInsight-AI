@@ -28,18 +28,18 @@ export interface RepositoryFile extends RepositoryEntry {
 }
 
 export interface IgnoredRepositoryFile extends RepositoryEntry {
-  reason: "directory" | "extension" | "size";
+  reason:
+    | "directory"
+    | "sensitive"
+    | "generated"
+    | "extension"
+    | "size";
 }
 
 export interface FilteredRepository {
   rootPath: string;
   files: RepositoryEntry[];
   ignoredFiles: IgnoredRepositoryFile[];
-}
-
-export interface RepositoryFile extends RepositoryEntry {
-  content: string;
-  size: number;
 }
 
 export interface RepositoryContent {
