@@ -134,6 +134,8 @@ Supports two independent validation stages:
 
 This enables uploading repositories containing large dependency folders while analyzing only relevant source code.
 
+Dependency and build folders (`node_modules`, `.git`, `dist`, ...) are skipped during extraction. Symlinks are never followed, secret files such as `.env` and private keys are never read, and uploads plus extracted files are deleted after every analysis.
+
 ---
 
 ## Robust Error Handling
@@ -167,7 +169,7 @@ Gracefully handles:
 - Express.js
 - TypeScript
 - Multer
-- Unzipper
+- yauzl
 - Zod
 
 ## AI
@@ -277,6 +279,13 @@ npm run dev
 ```env
 GEMINI_API_KEY=your_api_key
 GEMINI_MODEL=gemini-2.5-flash
+
+# Optional: origin of the deployed frontend, allowed by CORS
+FRONTEND_URL=https://your-frontend.example
+
+# Optional: save full prompts and model responses (they contain the
+# uploaded source code) to the log folder. Keep false in production.
+SAVE_DEBUG_ARTIFACTS=false
 ```
 
 ---
