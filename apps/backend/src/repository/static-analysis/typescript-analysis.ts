@@ -1,52 +1,16 @@
-import path from "node:path";
-
-import type { RepositoryFile } from "../../types/repository.js";
 import type { TypeScriptAnalysis } from "./analysis.types.js";
-import { matchTypeScriptLine } from "./typescript-patterns.js";
-
-const SUPPORTED_EXTENSIONS = new Set([
-  ".ts",
-  ".tsx",
-]);
+import type { SourceFacts } from "./source-facts.js";
 
 export function buildTypeScriptAnalysis(
-  files: RepositoryFile[],
+  facts: SourceFacts,
 ): TypeScriptAnalysis {
-  const counters: TypeScriptAnalysis = {
-    anyUsages: 0,
-    typeAssertions: 0,
-    tsIgnoreCount: 0,
-    eslintDisableCount: 0,
+  const count = (type: SourceFacts["typescript"][number]["type"]) =>
+    facts.typescript.filter((fact) => fact.type === type).length;
+
+  return {
+    anyUsages: count("any"),
+    typeAssertions: count("type-assertion"),
+    tsIgnoreCount: count("ts-ignore"),
+    eslintDisableCount: count("eslint-disable"),
   };
-
-  for (const file of files) {
-    const extension = path.extname(
-      file.relativePath,
-    ).toLowerCase();
-
-    if (!SUPPORTED_EXTENSIONS.has(extension)) {
-      continue;
-    }
-
-    for (const line of file.content.split(/\r?\n/)) {
-      for (const match of matchTypeScriptLine(line)) {
-        switch (match) {
-          case "any":
-            counters.anyUsages++;
-            break;
-          case "type-assertion":
-            counters.typeAssertions++;
-            break;
-          case "ts-ignore":
-            counters.tsIgnoreCount++;
-            break;
-          case "eslint-disable":
-            counters.eslintDisableCount++;
-            break;
-        }
-      }
-    }
-  }
-
-  return counters;
 }
