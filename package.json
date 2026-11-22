@@ -6,7 +6,9 @@
   "scripts": {
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "sync:schema": "node scripts/sync-report-schema.mjs",
+    "check:schema": "node scripts/sync-report-schema.mjs --check"
   },
   "keywords": [
     "ai",

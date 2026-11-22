@@ -1,0 +1,47 @@
+import type { EngineeringReport } from "../ai/report/report.types.js";
+import type { JobLogger } from "../logger/logger.service.js";
+import type {
+  AnalysisProgress,
+  AnalysisStage,
+} from "../progress/progress.types.js";
+
+export type JobStatus = "running" | "completed" | "failed";
+
+export interface JobResult {
+  report: EngineeringReport;
+  markdown: string;
+}
+
+/**
+ * Same shape as the HTTP error responses, so the frontend
+ * handles synchronous and background failures identically.
+ */
+export interface JobError {
+  status: number;
+  body: {
+    success: false;
+    error: string;
+    message: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface Job {
+  id: string;
+  status: JobStatus;
+  progress: AnalysisProgress;
+  result?: JobResult;
+  error?: JobError;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * What the analysis pipeline sees of its job: a way to report
+ * progress and a logger scoped to this job only.
+ */
+export interface JobContext {
+  readonly id: string;
+  readonly logger: JobLogger;
+  setStage(stage: AnalysisStage): void;
+}

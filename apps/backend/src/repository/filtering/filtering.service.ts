@@ -17,6 +17,7 @@ import type {
   RepositoryTree,
 } from "../../types/repository.js";
 
+import { InvalidArchiveError } from "../errors/InvalidArchiveError.js";
 import { RepositoryTooLargeError } from "../errors/RepositoryTooLargeError.js";
 import { MAX_ANALYZABLE_SIZE } from "../../constants/upload.js";
 
@@ -85,6 +86,14 @@ export function filterRepository(
     files.push(file);
 
     analyzableSize += file.size;
+  }
+
+  if (files.length === 0) {
+    throw new InvalidArchiveError(
+      repository.totalFiles === 0
+        ? "The ZIP archive is empty."
+        : `No source files found to analyze (${repository.totalFiles} files were all skipped as dependencies, build output, binaries or secrets).`,
+    );
   }
 
   if (analyzableSize > MAX_ANALYZABLE_SIZE) {

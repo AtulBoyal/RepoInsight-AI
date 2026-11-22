@@ -25,6 +25,7 @@ export default function HomePage() {
   const {
     analyze,
     loading,
+    error,
     result,
     progress,
 
@@ -71,6 +72,15 @@ export default function HomePage() {
         <AnalysisProgress
           stage={progress.stage}
         />
+
+        {error && (
+          <div
+            role="alert"
+            className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          >
+            {error}
+          </div>
+        )}
 
         {result && (
           <div className="mt-10">

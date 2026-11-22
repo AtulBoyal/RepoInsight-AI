@@ -36,5 +36,18 @@ export interface ContextFile {
 }
 
 export interface FileContext {
+  /**
+   * Files whose content is included in the prompt, in ranked order.
+   */
   files: ContextFile[];
+
+  /**
+   * Paths of analyzable files left out to stay within the budget.
+   */
+  omittedFiles: string[];
+
+  /**
+   * Number of files that passed filtering (included + omitted).
+   */
+  totalFiles: number;
 }

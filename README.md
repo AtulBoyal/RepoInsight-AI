@@ -104,7 +104,7 @@ Reports can be downloaded as professional Markdown documents.
 
 ## Real-Time Analysis Progress
 
-Provides live progress updates throughout the repository processing pipeline.
+Provides live progress updates for each analysis job, streamed with Server-Sent Events.
 
 Stages include:
 
@@ -195,6 +195,18 @@ The frontend provides the user interface and repository upload experience.
 
 The backend performs repository processing, static analysis, AI orchestration, validation, progress tracking, logging, and report generation.
 
+## Shared Report Schema
+
+The report format is defined once, as a Zod schema in `apps/backend/src/ai/report/report.schema.ts`.
+The frontend uses a generated copy (`apps/frontend/src/types/report.schema.generated.ts`), because each app deploys from its own folder.
+
+After changing the schema, run from the repository root:
+
+```bash
+npm run sync:schema    # update the frontend copy
+npm run check:schema   # fails if the copy is out of date
+```
+
 ---
 
 # Engineering Pipeline
@@ -283,10 +295,27 @@ GEMINI_MODEL=gemini-2.5-flash
 # Optional: origin of the deployed frontend, allowed by CORS
 FRONTEND_URL=https://your-frontend.example
 
+# Optional: analyses allowed to run at once (extra uploads get HTTP 429)
+MAX_CONCURRENT_JOBS=2
+
+# Optional: prompt size cap; files are ranked by importance and added until it is reached
+MAX_PROMPT_TOKENS=150000
+
 # Optional: save full prompts and model responses (they contain the
 # uploaded source code) to the log folder. Keep false in production.
 SAVE_DEBUG_ARTIFACTS=false
 ```
+
+# API
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/analyze` | Upload a ZIP (`repository` form field). Returns `202 { jobId }`. |
+| `GET` | `/api/jobs/:id/events` | Server-Sent Events: `progress`, then `completed` (report + markdown) or `failed` (error body). |
+| `GET` | `/api/jobs/:id` | Current job state as JSON. |
+| `GET` | `/api/health` | Health check. |
+
+Each analysis runs as its own job, so concurrent users never see each other's progress. Finished jobs are kept in memory for 30 minutes.
 
 ---
 

@@ -1,16 +1,15 @@
-import { generateContent } from "../gemini/gemini.client.js";
+import { generateContent, type GenerationOutput } from "../gemini/gemini.client.js";
 
 import { buildRepairPrompt } from "./repair.prompt.js";
 
 export async function repairResponse(
   invalidResponse: string,
   validationError: string,
-): Promise<string> {
-  const prompt =
+): Promise<GenerationOutput> {
+  return generateContent(
     buildRepairPrompt({
       invalidResponse,
       validationError,
-    });
-
-  return generateContent(prompt);
+    }),
+  );
 }

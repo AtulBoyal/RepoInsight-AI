@@ -17,3 +17,14 @@ export interface UploadTooLargeResponse {
 
   message: string;
 }
+
+/**
+ * Shape of every error the backend returns, synchronously or
+ * from a background job.
+ */
+export interface ApiErrorBody {
+  success: false;
+  error: string;
+  message: string;
+  [key: string]: unknown;
+}

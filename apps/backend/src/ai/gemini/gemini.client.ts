@@ -9,6 +9,12 @@ const client = new GoogleGenAI({
 
 const MAX_RETRIES = 3;
 
+export interface GenerationOutput {
+  text: string;
+  promptTokens?: number;
+  outputTokens?: number;
+}
+
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 
 function sleep(ms: number): Promise<void> {
@@ -25,7 +31,7 @@ function sleep(ms: number): Promise<void> {
  */
 export async function generateContent(
   prompt: PromptSpec,
-): Promise<string> {
+): Promise<GenerationOutput> {
   for (
     let attempt = 1;
     attempt <= MAX_RETRIES;
@@ -41,6 +47,8 @@ export async function generateContent(
               prompt.systemInstruction,
             responseMimeType:
               prompt.responseMimeType,
+            responseJsonSchema:
+              prompt.responseJsonSchema,
           },
         });
 
@@ -52,7 +60,11 @@ export async function generateContent(
         );
       }
 
-      return text.trim();
+      return {
+        text: text.trim(),
+        promptTokens: response.usageMetadata?.promptTokenCount,
+        outputTokens: response.usageMetadata?.candidatesTokenCount,
+      };
     } catch (error) {
       const status =
         (error as { status?: number }).status;

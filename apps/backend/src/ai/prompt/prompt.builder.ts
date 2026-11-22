@@ -1,6 +1,7 @@
 import type { AnalysisContext, ContextFile } from "../context/context.types.js";
 import type { PromptSpec } from "./prompt.types.js";
-import { SYSTEM_INSTRUCTION, ANALYSIS_TASK, REQUIRED_SCHEMA, REPORT_REQUIREMENTS } from "./prompt.constants.js";
+import { SYSTEM_INSTRUCTION, ANALYSIS_TASK, REPORT_REQUIREMENTS } from "./prompt.constants.js";
+import { ENGINEERING_REPORT_JSON_SCHEMA } from "../report/report.json-schema.js";
 import { MAX_FILE_CONTENT_CHARS } from "../../constants/repository.js";
 
 /**
@@ -202,6 +203,26 @@ function buildFileSection(file: ContextFile): string {
   ].join("\n");
 }
 
+const MAX_OMITTED_PATHS = 300;
+
+/**
+ * Lists files left out of the prompt, so the model knows they exist.
+ */
+function buildOmittedFilesSection(paths: string[]): string {
+  const shown = paths.slice(0, MAX_OMITTED_PATHS);
+
+  return [
+    "## Files Not Included",
+    "",
+    `${paths.length} analyzable files were left out to fit the prompt budget.`,
+    "",
+    ...shown.map((filePath) => `- ${filePath}`),
+    ...(paths.length > shown.length
+      ? [`- ... and ${paths.length - shown.length} more`]
+      : []),
+  ].join("\n");
+}
+
 /**
  * Builds the complete user prompt.
  */
@@ -252,39 +273,25 @@ function buildUserPrompt(context: AnalysisContext): string {
     State that explicitly.
   `);
 
-  sections.push(REQUIRED_SCHEMA);
+  sections.push(
+    [
+      "## Output Rules",
+      "",
+      "Return one JSON object that follows the response schema.",
+      "All scores are integers from 0 to 10.",
+      "Only cite files and line numbers from the Source Files section below.",
+      "Files listed under Files Not Included were not shown to you: you may mention",
+      "that they exist, but do not describe or cite their contents.",
+    ].join("\n"),
+  );
 
-  sections.push(`
-    ## Strict Output Rules
-
-    The JSON MUST exactly match REQUIRED_SCHEMA.
-
-    Never rename fields.
-
-    Never omit fields.
-
-    Never replace objects with strings.
-
-    Never replace arrays of objects with arrays of strings.
-
-    Every nested object must exist.
-
-    Every required array must exist.
-
-    Empty arrays are allowed.
-
-    All scores must be integers from 0 to 10.
-
-    Return exactly one JSON object.
-
-    Do not include explanations.
-
-    Do not include markdown.
-
-    Do not wrap JSON inside code fences.
-  `);
-
-  sections.push("## Source Files");
+  sections.push(
+    [
+      "## Source Files",
+      "",
+      `Showing ${context.files.files.length} of ${context.files.totalFiles} analyzable files, ordered by importance.`,
+    ].join("\n"),
+  );
 
   if (context.files.files.length === 0) {
     sections.push("No source files were selected for analysis.");
@@ -294,6 +301,10 @@ function buildUserPrompt(context: AnalysisContext): string {
         .map(buildFileSection)
         .join("\n\n"),
     );
+  }
+
+  if (context.files.omittedFiles.length > 0) {
+    sections.push(buildOmittedFilesSection(context.files.omittedFiles));
   }
 
   sections.push(
@@ -381,5 +392,6 @@ export function buildPrompt(
     systemInstruction: SYSTEM_INSTRUCTION.trim(),
     userInstruction: buildUserPrompt(context).trim(),
     responseMimeType: "application/json",
+    responseJsonSchema: ENGINEERING_REPORT_JSON_SCHEMA,
   };
 }
