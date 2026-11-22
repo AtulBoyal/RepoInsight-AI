@@ -18,6 +18,11 @@ async function walkDirectory(
   });
 
   for (const entry of entries) {
+    // Never follow links: a link could point outside the repository.
+    if (!entry.isFile() && !entry.isDirectory()) {
+      continue;
+    }
+
     const absolutePath = path.join(currentPath, entry.name);
 
     const relativePath = path.relative(
@@ -25,7 +30,7 @@ async function walkDirectory(
       absolutePath,
     );
 
-    const stats = await fs.stat(absolutePath);
+    const stats = await fs.lstat(absolutePath);
 
     const repositoryEntry: RepositoryEntry = {
       id: crypto.randomUUID(),
