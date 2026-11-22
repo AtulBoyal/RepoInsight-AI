@@ -329,6 +329,11 @@ MAX_CONCURRENT_JOBS=2
 # token with no extra permissions is enough (public repositories only).
 # GITHUB_TOKEN=github_pat_...
 
+# Optional: Postgres (e.g. Neon) for saved reports, share links and a
+# cache that survives restarts. Tables are created on startup.
+# DATABASE_URL=postgresql://user:password@host/db?sslmode=require
+REPORT_RETENTION_DAYS=30
+
 # Optional: reuse reports when the same GitHub commit or the same ZIP is
 # analyzed again (in memory; cleared on restart). 0 entries = no caching.
 REPORT_CACHE_MAX_ENTRIES=50
@@ -360,7 +365,18 @@ SAVE_DEBUG_ARTIFACTS=false
 | `POST` | `/api/analyze/github` | JSON `{ "url": "https://github.com/owner/repo", "force"?: true }`. Public repositories only; checked on GitHub before the job starts. |
 | `GET` | `/api/jobs/:id/events` | Server-Sent Events: `progress`, then `completed` (report + markdown) or `failed` (error body). |
 | `GET` | `/api/jobs/:id` | Current job state as JSON. |
+| `POST` | `/api/reports/:reportId/share` | Create a public link for a saved report. Returns `{ shareId, expiresAt, ownerToken }` (the token only the first time). |
+| `GET` | `/api/shared/:shareId` | A shared report. |
+| `DELETE` | `/api/shared/:shareId` | Remove the link. Header `Authorization: Bearer <ownerToken>`. |
 | `GET` | `/api/health` | Health check. |
+
+## Saved and Shared Reports
+
+With `DATABASE_URL` set, every finished report is saved in Postgres for `REPORT_RETENTION_DAYS` (default 30) and also serves as the report cache, so it survives restarts.
+
+A report becomes public only when the user clicks **Share**: it then gets a link like `/r/<shareId>` (128-bit random id, not indexed by search engines). The browser that shared it keeps a secret token (only its SHA-256 is stored) and can **Stop sharing** at any time. Expired reports and links are deleted automatically.
+
+Without a database, reports are cached in memory only and sharing is unavailable.
 
 Both analyze endpoints return a `jobId` to follow:
 
@@ -414,7 +430,6 @@ Each analysis runs as its own job, so concurrent users never see each other's pr
 ## Version 2.0
 
 - User Authentication
-- Saved Reports
 - Analysis History
 - GitHub OAuth
 - Repository Comparison
