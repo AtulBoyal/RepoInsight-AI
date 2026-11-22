@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+/**
+ * Scores are integers from 0 to 10. Fractional scores
+ * (e.g. 7.5) are rounded instead of failing validation.
+ */
+const scoreSchema = z
+  .number()
+  .min(0)
+  .max(10)
+  .transform((value) => Math.round(value));
+
 const evidenceReferenceSchema = z.object({
   file: z.string(),
   line: z.number().optional(),
@@ -54,7 +64,7 @@ export const engineeringReportSchema =
     }),
 
     folderStructure: z.object({
-      score: z.number(),
+      score: scoreSchema,
       positives: z.array(z.string()),
       negatives: z.array(z.string()),
       recommendations: z.array(
@@ -63,7 +73,7 @@ export const engineeringReportSchema =
     }),
 
     codeQuality: z.object({
-      score: z.number(),
+      score: scoreSchema,
       positives: z.array(z.string()),
       negatives: z.array(z.string()),
       recommendations: z.array(
@@ -84,7 +94,7 @@ export const engineeringReportSchema =
     ),
 
     resumeFeedback: z.object({
-      score: z.number(),
+      score: scoreSchema,
       summary: z.string(),
       strengths: z.array(z.string()),
       improvements: z.array(
@@ -111,7 +121,17 @@ export const engineeringReportSchema =
     ),
   });
 
-export type EngineeringReportSchema =
-  z.infer<
-    typeof engineeringReportSchema
-  >;
+export type EngineeringReport = z.infer<
+  typeof engineeringReportSchema
+>;
+
+export type EvidenceReference = z.infer<
+  typeof evidenceReferenceSchema
+>;
+
+export type Finding = z.infer<typeof findingSchema>;
+
+export type Improvement = z.infer<typeof improvementSchema>;
+
+export type InterviewQuestion =
+  EngineeringReport["interviewQuestions"][number];
