@@ -147,6 +147,7 @@ function toContextFile(file: RepositoryFile): ContextFile {
     path: file.relativePath,
     language: getLanguage(file.relativePath),
     content: file.content,
+    truncated: file.truncated,
   };
 }
 
