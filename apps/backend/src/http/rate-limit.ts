@@ -37,8 +37,9 @@ const passThrough: RequestHandler = (_req, _res, next) => next();
  *   rotate through addresses)
  * - whole site: RATE_LIMIT_PER_DAY analyses per day across all visitors
  *
- * Only accepted analyses count: requests that end in an error
- * (bad upload, server busy, limit reached) do not use up the limit.
+ * Only analyses that actually start (HTTP 202) count: errors (bad
+ * upload, server busy, limit reached) and reused results (a cached
+ * report, or joining an identical analysis already running) do not.
  * Runs before the upload is received, so a limited visitor cannot
  * send a large file first.
  *
@@ -51,6 +52,7 @@ export const analysisRateLimits: RequestHandler[] = [
         limit: env.RATE_LIMIT_PER_DAY,
         keyGenerator: () => "site",
         skipFailedRequests: true,
+        requestWasSuccessful: (_req, res) => res.statusCode === 202,
         standardHeaders: "draft-8",
         legacyHeaders: false,
         handler: (req, res) => {
@@ -71,6 +73,7 @@ export const analysisRateLimits: RequestHandler[] = [
         limit: env.RATE_LIMIT_PER_HOUR,
         keyGenerator: (req) => ipKeyGenerator(req.ip ?? "unknown"),
         skipFailedRequests: true,
+        requestWasSuccessful: (_req, res) => res.statusCode === 202,
         standardHeaders: "draft-8",
         legacyHeaders: false,
         handler: (req, res) => {

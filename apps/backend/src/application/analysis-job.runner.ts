@@ -8,6 +8,7 @@ import { JobLogger } from "../logger/logger.service.js";
 import { toErrorResponse } from "../http/error-response.js";
 import { downloadRepositoryZip } from "../github/github.client.js";
 import { MAX_UPLOAD_SIZE } from "../constants/upload.js";
+import { reportCache } from "../cache/report-cache.js";
 
 import type { AnalysisSource, JobContext } from "../jobs/job.types.js";
 import type { RepositoryInfo } from "../types/repository-info.js";
@@ -62,6 +63,11 @@ async function prepareSource(
   };
 }
 
+export interface RunOptions {
+  /** Store the result under this key for reuse. */
+  cacheKey?: string;
+}
+
 /**
  * Runs one analysis job in the background and records the outcome
  * in the job store. Never throws: every failure becomes a failed job.
@@ -69,6 +75,7 @@ async function prepareSource(
 export async function runAnalysisJob(
   jobId: string,
   source: AnalysisSource,
+  options: RunOptions = {},
 ): Promise<void> {
   const logger = new JobLogger(jobId);
 
@@ -86,16 +93,28 @@ export async function runAnalysisJob(
     // Deletes the ZIP and extracted files when done.
     const result = await analyzeUploadedRepository(zipPath, context, repository);
 
-    jobStore.complete(jobId, {
+    const jobResult = {
       report: result.report,
       markdown: result.markdown,
       repository,
-    });
+      analyzedAt: new Date().toISOString(),
+      cached: false,
+    };
+
+    if (options.cacheKey) {
+      await reportCache.save(options.cacheKey, jobResult);
+    }
+
+    jobStore.complete(jobId, jobResult);
 
     await logger.info("Repository analysis completed", result.trace);
   } catch (error) {
     await logger.error("Repository analysis failed", error);
 
     jobStore.fail(jobId, toErrorResponse(error));
+  } finally {
+    if (options.cacheKey) {
+      reportCache.release(options.cacheKey, jobId);
+    }
   }
 }
