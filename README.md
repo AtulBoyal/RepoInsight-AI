@@ -104,7 +104,7 @@ Reports can be downloaded as professional Markdown documents.
 
 ## Real-Time Analysis Progress
 
-Provides live progress updates throughout the repository processing pipeline.
+Provides live progress updates for each analysis job, streamed with Server-Sent Events.
 
 Stages include:
 
@@ -283,10 +283,27 @@ GEMINI_MODEL=gemini-2.5-flash
 # Optional: origin of the deployed frontend, allowed by CORS
 FRONTEND_URL=https://your-frontend.example
 
+# Optional: analyses allowed to run at once (extra uploads get HTTP 429)
+MAX_CONCURRENT_JOBS=2
+
+# Optional: prompt size cap; files are ranked by importance and added until it is reached
+MAX_PROMPT_TOKENS=150000
+
 # Optional: save full prompts and model responses (they contain the
 # uploaded source code) to the log folder. Keep false in production.
 SAVE_DEBUG_ARTIFACTS=false
 ```
+
+# API
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/analyze` | Upload a ZIP (`repository` form field). Returns `202 { jobId }`. |
+| `GET` | `/api/jobs/:id/events` | Server-Sent Events: `progress`, then `completed` (report + markdown) or `failed` (error body). |
+| `GET` | `/api/jobs/:id` | Current job state as JSON. |
+| `GET` | `/api/health` | Health check. |
+
+Each analysis runs as its own job, so concurrent users never see each other's progress. Finished jobs are kept in memory for 30 minutes.
 
 ---
 
