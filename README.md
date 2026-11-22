@@ -255,23 +255,22 @@ Professional Engineering Report
 ## Clone Repository
 
 ```bash
-git clone https://github.com/AtulBoyal/ai-project-reviewer.git
+git clone https://github.com/AtulBoyal/RepoInsight-AI.git
 
-cd ai-project-reviewer
+cd RepoInsight-AI
 ```
 
-## Install Dependencies
-
-```bash
-pnpm install
-```
+Each app has its own dependencies and `package-lock.json`, and is deployed from its own folder (`apps/backend` on Render, `apps/frontend` on Vercel). Use npm.
 
 ## Backend
 
 ```bash
 cd apps/backend
 
-npm run dev
+npm ci
+cp .env.example .env    # then set GEMINI_API_KEY
+
+npm run dev             # http://localhost:5000
 ```
 
 ## Frontend
@@ -279,8 +278,12 @@ npm run dev
 ```bash
 cd apps/frontend
 
-npm run dev
+npm ci
+
+npm run dev             # http://localhost:5173
 ```
+
+The frontend calls `http://localhost:5000/api` by default. Set `VITE_API_URL` to point it elsewhere.
 
 ---
 
