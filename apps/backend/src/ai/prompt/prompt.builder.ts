@@ -1,6 +1,76 @@
 import type { AnalysisContext, ContextFile } from "../context/context.types.js";
 import type { PromptSpec } from "./prompt.types.js";
 import { SYSTEM_INSTRUCTION, ANALYSIS_TASK, REQUIRED_SCHEMA, REPORT_REQUIREMENTS } from "./prompt.constants.js";
+import { MAX_FILE_CONTENT_CHARS } from "../../constants/repository.js";
+
+/**
+ * Objective repository measurements.
+ */
+function buildMetricsSection(
+  context: AnalysisContext,
+): string {
+  const { code, languages, directories, documentation, annotations } =
+    context.metrics;
+
+  const languageLines = [...languages]
+    .sort((a, b) => b.linesOfCode - a.linesOfCode)
+    .slice(0, 8)
+    .map(
+      (language) =>
+        `${language.language}: ${language.files} files, ${language.linesOfCode} lines`,
+    );
+
+  return [
+    "## Repository Metrics",
+    "",
+    `(Line counts cover at most the first ${MAX_FILE_CONTENT_CHARS} characters of each file.)`,
+    "",
+    `Lines: ${code.totalLinesOfCode} total, ${code.sourceLinesOfCode} source, ${code.commentLines} comment, ${code.blankLines} blank`,
+    "",
+    "Languages by lines:",
+    formatList(languageLines),
+    "",
+    `Directories: ${directories.totalDirectories} (max depth ${directories.maximumDepth}, deepest: ${directories.deepestDirectory}, most files: ${directories.largestDirectory} with ${directories.largestDirectoryFileCount})`,
+    "",
+    "Documentation files:",
+    formatList([
+      ...documentation.readmeFiles,
+      ...documentation.changelogFiles,
+      ...documentation.contributingFiles,
+      ...documentation.licenseFiles,
+    ]),
+    "",
+    `Annotations: ${annotations.todoCount} TODO, ${annotations.fixmeCount} FIXME, ${annotations.hackCount} HACK, ${annotations.xxxCount} XXX`,
+  ].join("\n");
+}
+
+/**
+ * Heuristic static-analysis counts.
+ */
+function buildStaticAnalysisSection(
+  context: AnalysisContext,
+): string {
+  const { functions, typescript, logging, tests, duplicates } =
+    context.staticAnalysis;
+
+  return [
+    "## Static Analysis",
+    "",
+    "These counts come from lightweight pattern matching and are approximate.",
+    "Verify against the source files before citing a specific number.",
+    "",
+    `Functions (JavaScript/TypeScript only): ${functions.totalFunctions} detected, average ${functions.averageFunctionLength} lines, longest ${functions.longestFunctionLines} lines, ${functions.functionsOver50Lines} over 50 lines, ${functions.functionsOver100Lines} over 100 lines`,
+    "",
+    `TypeScript: ${typescript.anyUsages} "any", ${typescript.typeAssertions} type assertions (excluding "as const"), ${typescript.tsIgnoreCount} @ts-ignore, ${typescript.eslintDisableCount} eslint-disable`,
+    "",
+    `Logging: ${logging.consoleLogCount} console.log, ${logging.consoleWarnCount} console.warn, ${logging.consoleErrorCount} console.error, ${logging.debuggerCount} debugger, ${logging.processExitCount} process.exit`,
+    "",
+    `Tests: ${tests.testFiles} test files for ${tests.sourceFiles} source files (${tests.testCoverageRatio} test files per 100 source files — this is NOT code coverage)`,
+    `Test frameworks declared: ${[tests.hasJest && "Jest", tests.hasVitest && "Vitest"].filter(Boolean).join(", ") || "none detected (only Jest/Vitest are checked)"}`,
+    "",
+    `Duplicate file names: ${duplicates.duplicateFileCount} (conventional names such as index.ts or __init__.py are expected to repeat)`,
+  ].join("\n");
+}
 
 function buildEvidenceSection(
   context: AnalysisContext,
@@ -121,6 +191,11 @@ function buildFileSection(file: ContextFile): string {
     "===== FILE =====",
     `Path: ${file.path}`,
     `Language: ${file.language}`,
+    ...(file.truncated
+      ? [
+          `Note: truncated to the first ${MAX_FILE_CONTENT_CHARS} characters; the rest of this file is not shown.`,
+        ]
+      : []),
     "",
     file.content.trim(),
     "===== END FILE =====",
@@ -143,9 +218,9 @@ function buildUserPrompt(context: AnalysisContext): string {
 
   sections.push(buildStructureSection(context));
 
-  // sections.push(buildMetricsSection(context));
+  sections.push(buildMetricsSection(context));
 
-  // sections.push(buildStaticAnalysisSection(context));
+  sections.push(buildStaticAnalysisSection(context));
 
   sections.push(buildEvidenceSection(context));
 
@@ -164,7 +239,7 @@ function buildUserPrompt(context: AnalysisContext): string {
 
     If any information conflicts:
 
-    Always trust the supplied repository data.
+    Trust the source files over heuristic counts.
 
     Never infer missing features.
 
@@ -176,8 +251,6 @@ function buildUserPrompt(context: AnalysisContext): string {
 
     State that explicitly.
   `);
-
-  sections.push("## Important Files");
 
   sections.push(REQUIRED_SCHEMA);
 
@@ -210,6 +283,8 @@ function buildUserPrompt(context: AnalysisContext): string {
 
     Do not wrap JSON inside code fences.
   `);
+
+  sections.push("## Source Files");
 
   if (context.files.files.length === 0) {
     sections.push("No source files were selected for analysis.");
@@ -251,16 +326,17 @@ function buildUserPrompt(context: AnalysisContext): string {
       "",
       "Questions should be derived directly from repository decisions.",
       "",
-      "Prioritize:",
+      "Prioritize, where the repository gives material for them:",
       "",
-      "- Architecture",
-      "- TypeScript",
-      "- Error Handling",
+      "- Architecture and module boundaries",
+      "- Language and framework features of the detected stack",
+      "- Data flow and state management",
+      "- Error handling",
       "- Security",
-      "- AI Pipeline",
-      "- Prompt Engineering",
-      "- Static Analysis",
-      "- Design Trade-offs",
+      "- Testing strategy",
+      "- Design trade-offs",
+      "",
+      "Only ask about topics that actually appear in this repository.",
       "",
       "Avoid generic DSA questions.",
       "",

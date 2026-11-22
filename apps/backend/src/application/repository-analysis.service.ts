@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 
@@ -7,30 +8,43 @@ import { analyzeRepository } from "../ai/analysis/ai-analysis.service.js";
 
 import type { AnalysisResult } from "../ai/analysis/analysis.types.js";
 
+/**
+ * Runs the full analysis for an uploaded ZIP.
+ *
+ * The uploaded ZIP and the extracted files are always deleted
+ * afterwards, whether the analysis succeeds or fails.
+ */
 export async function analyzeUploadedRepository(
   zipFilePath: string,
 ): Promise<AnalysisResult> {
-  progressService.setStage("EXTRACTING");
-
-  const extractionDirectory = path.join(
-    os.tmpdir(),
-    `repository-${Date.now()}`,
+  const extractionDirectory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "repository-"),
   );
 
-  progressService.setStage(
-    "READING_REPOSITORY",
-  );
+  try {
+    const metadata = await processRepository(
+      zipFilePath,
+      extractionDirectory,
+    );
 
-  const metadata = await processRepository(
-    zipFilePath,
-    extractionDirectory,
-  );
+    const result = await analyzeRepository({
+      metadata,
+    });
 
-  const result = await analyzeRepository({
-    metadata,
-  });
+    progressService.setStage("COMPLETED");
 
-  progressService.setStage("COMPLETED");
+    return result;
+  } catch (error) {
+    progressService.setStage("FAILED");
 
-  return result;
+    throw error;
+  } finally {
+    await Promise.allSettled([
+      fs.rm(extractionDirectory, {
+        recursive: true,
+        force: true,
+      }),
+      fs.rm(zipFilePath, { force: true }),
+    ]);
+  }
 }

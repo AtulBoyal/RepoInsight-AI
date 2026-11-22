@@ -1,18 +1,6 @@
 export interface AnalyzeRepositoryResponse {
   report: EngineeringReport;
   markdown: string;
-  trace: GenerationTrace;
-}
-
-export interface GenerationTrace {
-  startedAt: string;
-  finishedAt: string;
-  durationMs: number;
-  model: string;
-  promptCharacters: number;
-  responseCharacters: number;
-  repaired: boolean;
-  repairAttempts: number;
 }
 
 export interface EvidenceReference {

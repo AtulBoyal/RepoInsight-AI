@@ -19,8 +19,6 @@ export interface FunctionAnalysis {
 export interface TypeScriptAnalysis {
   anyUsages: number;
 
-  unknownUsages: number;
-
   typeAssertions: number;
 
   tsIgnoreCount: number;
@@ -51,6 +49,10 @@ export interface TestAnalysis {
 
   testFiles: number;
 
+  /**
+   * Test files per 100 non-test source files.
+   * This is a file ratio, not code coverage.
+   */
   testCoverageRatio: number;
 
   hasJest: boolean;

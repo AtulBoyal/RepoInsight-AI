@@ -77,9 +77,7 @@ export function useAnalysis() {
     
     setLoading(true);
 
-    let interval: ReturnType<typeof setInterval>;
-
-    interval = setInterval(async () => {
+    const interval = setInterval(async () => {
       try {
         const latest = await getProgress();
 
@@ -112,13 +110,11 @@ export function useAnalysis() {
       const response =
         await analyzeRepository(file);
 
-      console.log("Analyze response:", response);
 
       clearInterval(interval);
 
       setResult(response);
 
-      console.log("Result state updated");
 
       setProgress({
         stage: "COMPLETED",
@@ -126,7 +122,6 @@ export function useAnalysis() {
         percentage: 100,
       });
 
-      console.log("Progress set to completed.");
       
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -134,8 +129,9 @@ export function useAnalysis() {
 
         // Handle explicit backend upload size error
         if (
-          error.response?.status === 413 ||
-          data?.error === "UPLOAD_TOO_LARGE"
+          data?.error === "UPLOAD_TOO_LARGE" ||
+          (error.response?.status === 413 &&
+            data?.error !== "REPOSITORY_TOO_LARGE")
         ) {
           setUploadTooLargeError({
             success: false,
@@ -185,6 +181,16 @@ export function useAnalysis() {
             percentage: 0,
           });
 
+          return;
+        }
+
+        if (typeof data?.message === "string") {
+          setError(data.message);
+          setProgress({
+            stage: "FAILED",
+            message: "Analysis failed.",
+            percentage: 100,
+          });
           return;
         }
       }

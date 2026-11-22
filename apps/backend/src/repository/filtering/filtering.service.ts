@@ -1,9 +1,13 @@
 import path from "node:path";
 
 import {
+  GENERATED_FILE_NAMES,
+  GENERATED_FILE_SUFFIXES,
   IGNORED_DIRECTORIES,
-  IGNORED_EXTENSIONS,
   MAX_FILE_SIZE_BYTES,
+  TEXT_FILE_EXTENSIONS,
+  TEXT_FILE_NAMES,
+  isSensitiveFile,
 } from "../../constants/repository.js";
 
 import type {
@@ -16,23 +20,38 @@ import type {
 import { RepositoryTooLargeError } from "../errors/RepositoryTooLargeError.js";
 import { MAX_ANALYZABLE_SIZE } from "../../constants/upload.js";
 
-const ignoredDirectories = new Set(IGNORED_DIRECTORIES);
-const ignoredExtensions = new Set(
-  IGNORED_EXTENSIONS.map((ext) => ext.toLowerCase()),
-);
-
 function getIgnoreReason(
   file: RepositoryEntry,
 ): IgnoredRepositoryFile["reason"] | null {
   const segments = file.relativePath.split(path.sep);
 
-  if (segments.some((segment) => ignoredDirectories.has(segment))) {
+  if (segments.some((segment) => IGNORED_DIRECTORIES.has(segment))) {
     return "directory";
   }
 
-  const extension = path.extname(file.name).toLowerCase();
+  if (isSensitiveFile(file.name)) {
+    return "sensitive";
+  }
 
-  if (ignoredExtensions.has(extension)) {
+  const lowerName = file.name.toLowerCase();
+
+  if (
+    GENERATED_FILE_NAMES.has(file.name) ||
+    GENERATED_FILE_SUFFIXES.some((suffix) => lowerName.endsWith(suffix))
+  ) {
+    return "generated";
+  }
+
+  const extension = path.extname(lowerName);
+
+  // Non-secret env templates (.env.example, ...) document configuration.
+  const isEnvTemplate = lowerName.startsWith(".env.");
+
+  if (
+    !TEXT_FILE_EXTENSIONS.has(extension) &&
+    !TEXT_FILE_NAMES.has(file.name) &&
+    !isEnvTemplate
+  ) {
     return "extension";
   }
 

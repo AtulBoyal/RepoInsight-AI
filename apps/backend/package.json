@@ -10,8 +10,9 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/multer": "^2.1.0",
-    "@types/unzipper": "^0.10.11",
+    "@types/yauzl": "^2.10.3",
     "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.62.1"
   },
   "dependencies": {
@@ -19,9 +20,8 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "extract-zip": "^2.0.1",
     "multer": "^2.2.0",
-    "unzipper": "^0.12.5",
+    "yauzl": "^2.10.0",
     "zod": "^4.4.3"
   }
 }

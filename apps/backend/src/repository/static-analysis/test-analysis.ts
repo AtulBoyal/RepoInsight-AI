@@ -15,6 +15,11 @@ const SOURCE_EXTENSIONS = new Set([
   ".cpp",
   ".c",
   ".cs",
+  ".kt",
+  ".rb",
+  ".php",
+  ".mjs",
+  ".cjs",
 ]);
 
 function isSourceFile(file: RepositoryFile): boolean {
@@ -25,20 +30,34 @@ function isSourceFile(file: RepositoryFile): boolean {
   return SOURCE_EXTENSIONS.has(extension);
 }
 
+const TEST_DIRECTORY_SEGMENTS = new Set([
+  "__tests__",
+  "test",
+  "tests",
+  "spec",
+]);
+
+/**
+ * Recognizes common test-file conventions across languages:
+ * JS/TS (*.test.ts, *.spec.ts, __tests__/), Python (test_*.py, *_test.py),
+ * Go (*_test.go), Java/Kotlin/C# (*Test.java, *Tests.cs), and
+ * test/ or tests/ directories.
+ */
 function isTestFile(file: RepositoryFile): boolean {
-  const normalized =
-    file.relativePath.toLowerCase();
+  if (!isSourceFile(file)) {
+    return false;
+  }
+
+  const segments = file.relativePath.toLowerCase().split(path.sep);
+  const fileName = path.basename(file.relativePath);
+  const stem = fileName.slice(0, fileName.length - path.extname(fileName).length);
 
   return (
-    normalized.includes("__tests__") ||
-    normalized.endsWith(".test.ts") ||
-    normalized.endsWith(".test.tsx") ||
-    normalized.endsWith(".test.js") ||
-    normalized.endsWith(".test.jsx") ||
-    normalized.endsWith(".spec.ts") ||
-    normalized.endsWith(".spec.tsx") ||
-    normalized.endsWith(".spec.js") ||
-    normalized.endsWith(".spec.jsx")
+    segments.slice(0, -1).some((segment) => TEST_DIRECTORY_SEGMENTS.has(segment)) ||
+    /\.(test|spec)$/i.test(stem) ||
+    /^test_/i.test(stem) ||
+    /_test$/i.test(stem) ||
+    /(Test|Tests|Spec)$/.test(stem)
   );
 }
 
@@ -54,12 +73,10 @@ export function buildTestAnalysis(
   let hasVitest = false;
 
   for (const file of files) {
-    if (isSourceFile(file)) {
-      sourceFiles++;
-    }
-
     if (isTestFile(file)) {
       testFiles++;
+    } else if (isSourceFile(file)) {
+      sourceFiles++;
     }
 
     if (

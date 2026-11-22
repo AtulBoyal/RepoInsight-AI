@@ -3,7 +3,3 @@ export interface RepairRequest {
 
   validationError: string;
 }
-
-export interface RepairResult {
-  repairedResponse: string;
-}

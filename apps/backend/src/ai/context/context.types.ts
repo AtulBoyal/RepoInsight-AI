@@ -29,9 +29,10 @@ export interface StructureContext {
 }
 
 export interface ContextFile {
-    path: string;
-    language: string;
-    content: string;
+  path: string;
+  language: string;
+  content: string;
+  truncated: boolean;
 }
 
 export interface FileContext {
