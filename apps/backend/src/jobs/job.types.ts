@@ -1,4 +1,6 @@
 import type { EngineeringReport } from "../ai/report/report.types.js";
+import type { ResolvedRepository } from "../github/github.client.js";
+import type { RepositoryInfo } from "../types/repository-info.js";
 import type { JobLogger } from "../logger/logger.service.js";
 import type {
   AnalysisProgress,
@@ -10,7 +12,15 @@ export type JobStatus = "running" | "completed" | "failed";
 export interface JobResult {
   report: EngineeringReport;
   markdown: string;
+  repository: RepositoryInfo;
 }
+
+/**
+ * Where the repository for a job comes from.
+ */
+export type AnalysisSource =
+  | { type: "upload"; zipPath: string; fileName: string }
+  | { type: "github"; repository: ResolvedRepository };
 
 /**
  * Same shape as the HTTP error responses, so the frontend

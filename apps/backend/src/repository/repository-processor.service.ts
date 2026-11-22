@@ -11,6 +11,7 @@ export async function processRepository(
   zipFilePath: string,
   extractionDirectory: string,
   job: JobContext,
+  displayName?: string,
 ): Promise<RepositoryMetadata> {
   job.setStage("EXTRACTING");
 
@@ -36,7 +37,7 @@ export async function processRepository(
 
   job.setStage("STATIC_ANALYSIS");
 
-  const metadata = buildRepositoryMetadata(content, tree);
+  const metadata = buildRepositoryMetadata(content, tree, displayName);
 
   await job.logger.info("Repository metadata generated");
 

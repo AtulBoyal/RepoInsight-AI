@@ -150,7 +150,7 @@ export async function analyzeRepository(
 
   job.setStage("GENERATING_MARKDOWN");
 
-  const markdown = buildMarkdown(report);
+  const markdown = buildMarkdown(report, request.repository);
 
   await job.logger.markdown(markdown);
 

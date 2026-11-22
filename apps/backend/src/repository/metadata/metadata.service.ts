@@ -162,6 +162,7 @@ function detectFrameworks(
 export function buildRepositoryMetadata(
   repository: RepositoryContent,
   tree: RepositoryTree,
+  displayName?: string,
 ): RepositoryMetadata {
   const files = repository.files;
 
@@ -188,7 +189,7 @@ export function buildRepositoryMetadata(
     .sort();
 
   const repositoryName =
-    path.basename(repository.rootPath);
+    displayName ?? path.basename(repository.rootPath);
 
   const metrics = buildRepositoryMetrics(
     repository,

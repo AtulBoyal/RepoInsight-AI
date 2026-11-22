@@ -1,3 +1,4 @@
+import type { RepositoryInfo } from "../../types/repository-info.js";
 import type {
   EngineeringReport,
   EvidenceReference,
@@ -34,6 +35,23 @@ function formatEvidence(evidence: EvidenceReference[]): string {
   });
 
   return ["", "**Evidence**", "", ...items].join("\n");
+}
+
+/**
+ * "**Repository:** [owner/repo](url) · `main` @ `abc1234`"
+ */
+function formatRepositoryLine(repository: RepositoryInfo): string {
+  const name = repository.url
+    ? `[${repository.name}](${repository.url})`
+    : repository.name;
+
+  const ref = repository.ref ? ` · \`${repository.ref}\`` : "";
+
+  const commit = repository.commitSha
+    ? ` @ \`${repository.commitSha.slice(0, 7)}\``
+    : "";
+
+  return `**Repository:** ${name}${ref}${commit}`;
 }
 
 /**
@@ -141,9 +159,12 @@ ${question.expectedAnswer}
  */
 export function buildMarkdown(
   report: EngineeringReport,
+  repository?: RepositoryInfo,
 ): string {
   return [
     "# AI Project Review",
+
+    ...(repository ? [formatRepositoryLine(repository)] : []),
 
     "---",
 

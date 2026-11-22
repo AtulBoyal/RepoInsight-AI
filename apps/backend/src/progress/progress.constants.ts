@@ -21,6 +21,13 @@ export const ANALYSIS_PROGRESS: Record<
     updatedAt: Date.now(),
   },
 
+  DOWNLOADING: {
+    stage: "DOWNLOADING",
+    message: "Downloading repository from GitHub...",
+    percentage: 10,
+    updatedAt: Date.now(),
+  },
+
   EXTRACTING: {
     stage: "EXTRACTING",
     message: "Extracting ZIP archive...",

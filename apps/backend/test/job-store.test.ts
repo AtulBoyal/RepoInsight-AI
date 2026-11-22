@@ -33,7 +33,11 @@ describe("jobStore", () => {
   it("does not change a job after it has finished", () => {
     const job = jobStore.create();
 
-    jobStore.complete(job.id, { report, markdown: "# done" });
+    jobStore.complete(job.id, {
+      report,
+      markdown: "# done",
+      repository: { name: "demo" },
+    });
     jobStore.fail(job.id, {
       status: 500,
       body: { success: false, error: "X", message: "late failure" },

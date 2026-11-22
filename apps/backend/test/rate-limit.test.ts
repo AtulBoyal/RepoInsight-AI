@@ -14,8 +14,8 @@ process.env.MAX_CONCURRENT_JOBS = "100";
 
 // Never run a real analysis: just delete the uploaded file.
 vi.mock("../src/application/analysis-job.runner.js", () => ({
-  runAnalysisJob: vi.fn(async (_jobId: string, zipPath: string) => {
-    await fs.rm(zipPath, { force: true });
+  runAnalysisJob: vi.fn(async (_jobId: string, source: { zipPath?: string }) => {
+    if (source.zipPath) await fs.rm(source.zipPath, { force: true });
   }),
 }));
 
