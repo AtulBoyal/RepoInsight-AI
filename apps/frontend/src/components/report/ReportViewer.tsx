@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { AnalyzeRepositoryResponse } from "../../types/report";
 
 import ArchitectureCard from "./ArchitectureCard";
@@ -15,22 +17,29 @@ import TechnologyStackCard from "./TechnologyStackCard";
 import WeaknessesCard from "./WeaknessesCard";
 
 interface Props {
-  result: AnalyzeRepositoryResponse;
-  loading: boolean;
-  onReanalyze(): void;
+  result: Pick<
+    AnalyzeRepositoryResponse,
+    "report" | "markdown" | "repository" | "analyzedAt"
+  > & { cached?: boolean };
+  loading?: boolean;
+  /** Offered on cached results; omitted on shared-report pages. */
+  onReanalyze?(): void;
+  /** Extra header actions, e.g. the Share controls. */
+  actions?: ReactNode;
 }
 
 export default function ReportViewer({
   result,
-  loading,
+  loading = false,
   onReanalyze,
+  actions,
 }: Props) {
   const { report, markdown, repository } = result;
 
   return (
     <div className="space-y-10">
 
-      {result.cached && (
+      {result.cached && onReanalyze && (
         <CachedResultNotice
           analyzedAt={result.analyzedAt}
           loading={loading}
@@ -38,7 +47,7 @@ export default function ReportViewer({
         />
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
         <div>
 
@@ -75,9 +84,13 @@ export default function ReportViewer({
 
         </div>
 
-        <MarkdownDownload
-          markdown={markdown}
-        />
+        <div className="flex flex-col gap-3 sm:items-end">
+          <MarkdownDownload
+            markdown={markdown}
+          />
+
+          {actions}
+        </div>
 
       </div>
 

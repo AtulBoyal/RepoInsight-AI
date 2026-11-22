@@ -11,6 +11,7 @@ import SelectedFile from "../components/upload/SelectedFile";
 import AnalyzeButton from "../components/upload/AnalyzeButton";
 import AnalysisProgress from "../components/status/AnalysisProgress";
 import ReportViewer from "../components/report/ReportViewer";
+import ShareControls from "../components/report/ShareControls";
 import ProgressModal from "../components/progress/ProgressModal";
 import RepositoryTooLargeModal from "../components/errors/RepositoryTooLargeModal";
 import UploadTooLargeModal from "../components/errors/UploadTooLargeModal";
@@ -116,6 +117,11 @@ export default function HomePage() {
             <ReportViewer
               result={result}
               loading={loading}
+              actions={
+                result.reportId && (
+                  <ShareControls key={result.reportId} reportId={result.reportId} />
+                )
+              }
               onReanalyze={() => {
                 setShowProgress(true);
                 reanalyze();
