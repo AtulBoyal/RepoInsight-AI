@@ -9,6 +9,8 @@ const client = new GoogleGenAI({
 
 const MAX_RETRIES = 3;
 
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) =>
     setTimeout(resolve, ms),
@@ -18,24 +20,18 @@ function sleep(ms: number): Promise<void> {
 /**
  * Generates raw JSON text from Gemini.
  *
- * Automatically retries temporary Gemini failures
- * such as HTTP 503 (high demand).
+ * Retries temporary failures (429 / 5xx) with linear backoff.
+ * Other failures (e.g. 400 when the prompt is too large) fail fast.
  */
 export async function generateContent(
   prompt: PromptSpec,
 ): Promise<string> {
-  let lastError: unknown;
-
   for (
     let attempt = 1;
     attempt <= MAX_RETRIES;
     attempt++
   ) {
     try {
-      console.log(
-        `Gemini request (attempt ${attempt}/${MAX_RETRIES})`,
-      );
-
       const response =
         await client.models.generateContent({
           model: env.GEMINI_MODEL,
@@ -50,14 +46,6 @@ export async function generateContent(
 
       const text = response.text;
 
-      console.log(
-        "\n========== GEMINI RESPONSE ==========\n",
-      );
-      console.log(text);
-      console.log(
-        "\n=====================================\n",
-      );
-
       if (!text) {
         throw new Error(
           "Gemini returned an empty response.",
@@ -66,44 +54,29 @@ export async function generateContent(
 
       return text.trim();
     } catch (error) {
-      lastError = error;
-
-      console.error(
-        `Gemini attempt ${attempt} failed:`,
-        error,
-      );
-
       const status =
         (error as { status?: number }).status;
 
-      const retryable =
-        status === 429 ||
-        status === 500 ||
-        status === 502 ||
-        status === 503 ||
-        status === 504;
+      console.error(
+        `Gemini attempt ${attempt}/${MAX_RETRIES} failed` +
+          (status ? ` (status ${status})` : ""),
+        error instanceof Error ? error.message : error,
+      );
 
-      if (
-        !retryable ||
-        attempt === MAX_RETRIES
-      ) {
+      if (status !== undefined && !RETRYABLE_STATUSES.has(status)) {
+        throw new Error(
+          `Gemini rejected the request (status ${status}). ` +
+            "The repository may be too large to review in one request.",
+        );
+      }
+
+      if (attempt === MAX_RETRIES) {
         break;
       }
 
-      const delay = attempt * 2000;
-
-      console.log(
-        `Retrying in ${delay / 1000} seconds...`,
-      );
-
-      await sleep(delay);
+      await sleep(attempt * 2000);
     }
   }
-
-  console.error(
-    "Gemini generation failed permanently:",
-    lastError,
-  );
 
   throw new Error(
     "Gemini is temporarily unavailable. Please try again in a few moments.",
