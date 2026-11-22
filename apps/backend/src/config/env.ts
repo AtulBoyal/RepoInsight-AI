@@ -31,6 +31,16 @@ const envSchema = z.object({
    */
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
   /**
+   * Optional GitHub token for analyzing repositories by URL. Without it,
+   * GitHub allows 60 API requests per hour from the server's IP; with it,
+   * 5,000. A fine-grained token with no permissions is enough (public
+   * repositories only).
+   */
+  GITHUB_TOKEN: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() || undefined),
+  /**
    * Upper bound on the prompt size sent to Gemini. Source files are
    * ranked by importance and added until this budget is reached.
    */

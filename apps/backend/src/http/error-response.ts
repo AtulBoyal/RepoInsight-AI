@@ -4,6 +4,7 @@ import { MAX_UPLOAD_SIZE } from "../constants/upload.js";
 import { InvalidArchiveError } from "../repository/errors/InvalidArchiveError.js";
 import { RepositoryTooLargeError } from "../repository/errors/RepositoryTooLargeError.js";
 import type { JobError } from "../jobs/job.types.js";
+import { GitHubError } from "../github/github.errors.js";
 
 export class CorsError extends Error {}
 
@@ -48,6 +49,13 @@ export function toErrorResponse(err: unknown): JobError {
         analyzableSizeMB: Number((err.size / 1024 / 1024).toFixed(1)),
         limitMB: Number((err.limit / 1024 / 1024).toFixed(0)),
       },
+    };
+  }
+
+  if (err instanceof GitHubError) {
+    return {
+      status: err.status,
+      body: { success: false, error: err.code, message: err.message },
     };
   }
 
