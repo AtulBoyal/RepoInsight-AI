@@ -3,10 +3,10 @@ import path from "node:path";
 import os from "node:os";
 
 import { processRepository } from "../repository/repository-processor.service.js";
-import { progressService } from "../progress/progress.service.js";
 import { analyzeRepository } from "../ai/analysis/ai-analysis.service.js";
 
 import type { AnalysisResult } from "../ai/analysis/analysis.types.js";
+import type { JobContext } from "../jobs/job.types.js";
 
 /**
  * Runs the full analysis for an uploaded ZIP.
@@ -16,6 +16,7 @@ import type { AnalysisResult } from "../ai/analysis/analysis.types.js";
  */
 export async function analyzeUploadedRepository(
   zipFilePath: string,
+  job: JobContext,
 ): Promise<AnalysisResult> {
   const extractionDirectory = await fs.mkdtemp(
     path.join(os.tmpdir(), "repository-"),
@@ -25,19 +26,10 @@ export async function analyzeUploadedRepository(
     const metadata = await processRepository(
       zipFilePath,
       extractionDirectory,
+      job,
     );
 
-    const result = await analyzeRepository({
-      metadata,
-    });
-
-    progressService.setStage("COMPLETED");
-
-    return result;
-  } catch (error) {
-    progressService.setStage("FAILED");
-
-    throw error;
+    return await analyzeRepository({ metadata }, job);
   } finally {
     await Promise.allSettled([
       fs.rm(extractionDirectory, {

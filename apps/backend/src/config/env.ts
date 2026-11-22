@@ -10,6 +10,16 @@ const envSchema = z.object({
    * the raw model response and the report are written to the log folder.
    * Keep this off in production.
    */
+  /**
+   * Analyses allowed to run at the same time. Further uploads get
+   * HTTP 429 until one finishes. Protects memory and Gemini spend.
+   */
+  MAX_CONCURRENT_JOBS: z.coerce.number().int().min(1).default(2),
+  /**
+   * Upper bound on the prompt size sent to Gemini. Source files are
+   * ranked by importance and added until this budget is reached.
+   */
+  MAX_PROMPT_TOKENS: z.coerce.number().int().min(10_000).default(150_000),
   SAVE_DEBUG_ARTIFACTS: z
     .enum(["true", "false"])
     .default("false")

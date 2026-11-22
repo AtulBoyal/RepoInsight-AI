@@ -10,7 +10,6 @@ import type {
   RepositoryTree,
 } from "../../types/repository.js";
 
-import { progressService } from "../../progress/progress.service.js";
 
 function unique(values: string[]): string[] {
   return [...new Set(values)].sort();
@@ -195,9 +194,6 @@ export function buildRepositoryMetadata(
     tree,
   );
 
-  progressService.setStage(
-    "STATIC_ANALYSIS",
-  );
 
   const staticAnalysis = buildStaticAnalysis(repository.files);
 

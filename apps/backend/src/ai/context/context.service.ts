@@ -8,54 +8,24 @@ import type {
 import type {
   AnalysisContext,
   ContextFile,
+  FileContext,
 } from "./context.types.js";
+import { rankFiles } from "./file-ranking.js";
 
-const FILE_PRIORITY: ReadonlyArray<string> = [
-  "README.md",
-  "package.json",
-  "Dockerfile",
-  "docker-compose.yml",
-  "tsconfig.json",
-  "vite.config.ts",
-  "next.config.js",
-  "next.config.mjs",
-  "requirements.txt",
-  "pom.xml",
-];
+/**
+ * Approximate prompt characters used by a file section's header
+ * and separators, on top of the file content itself.
+ */
+const FILE_SECTION_OVERHEAD_CHARS = 120;
 
 const EXCLUDED_FILES = new Set([
-  "package-lock.json",
-  "pnpm-lock.yaml",
-  "yarn.lock",
   "LICENSE",
+  "LICENSE.md",
   "CHANGELOG.md",
 ]);
 
-function getFilePriority(fileName: string): number {
-  const index = FILE_PRIORITY.indexOf(fileName);
-
-  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
-}
-
 function isExcludedFile(fileName: string): boolean {
   return EXCLUDED_FILES.has(fileName);
-}
-
-function compareFiles(
-  first: RepositoryFile,
-  second: RepositoryFile,
-): number {
-  const priorityDifference =
-    getFilePriority(first.name) -
-    getFilePriority(second.name);
-
-  if (priorityDifference !== 0) {
-    return priorityDifference;
-  }
-
-  return first.relativePath.localeCompare(
-    second.relativePath,
-  );
 }
 
 function getLanguage(filePath: string): string {
@@ -167,8 +137,53 @@ function getImportantDirectories(
   return [...directories].sort();
 }
 
+/**
+ * Picks files in ranked order until the character budget is used.
+ * A file that does not fit is skipped, so smaller files after it
+ * can still be included.
+ */
+function selectFiles(
+  files: RepositoryFile[],
+  fileCharBudget: number,
+): FileContext {
+  const ranked = rankFiles(
+    files.filter((file) => !isExcludedFile(file.name)),
+  );
+
+  const included: ContextFile[] = [];
+  const omittedFiles: string[] = [];
+
+  let remaining = fileCharBudget;
+
+  for (const file of ranked) {
+    const cost =
+      file.content.length +
+      file.relativePath.length +
+      FILE_SECTION_OVERHEAD_CHARS;
+
+    if (cost <= remaining) {
+      included.push(toContextFile(file));
+      remaining -= cost;
+    } else {
+      omittedFiles.push(file.relativePath);
+    }
+  }
+
+  return {
+    files: included,
+    omittedFiles,
+    totalFiles: ranked.length,
+  };
+}
+
+/**
+ * Builds the model's view of the repository.
+ *
+ * @param fileCharBudget characters available for file contents.
+ */
 export function buildAnalysisContext(
   metadata: RepositoryMetadata,
+  fileCharBudget: number,
 ): AnalysisContext {
   const repository = {
     name: metadata.repositoryName,
@@ -190,14 +205,10 @@ export function buildAnalysisContext(
     ),
   };
 
-  const files = {
-    files: [...metadata.repository.files]
-      .filter(
-        (file) => !isExcludedFile(file.name),
-      )
-      .sort(compareFiles)
-      .map(toContextFile),
-  };
+  const files = selectFiles(
+    metadata.repository.files,
+    Math.max(0, fileCharBudget),
+  );
 
   const metrics = metadata.metrics;
 

@@ -1,16 +1,23 @@
+import fs from "node:fs/promises";
 import { Router } from "express";
 
 import { upload } from "../http/multer.js";
-import { analyzeUploadedRepository } from "../application/repository-analysis.service.js";
-import { progressService } from "../progress/progress.service.js";
-import { logger } from "../logger/logger.service.js";
+import { runAnalysisJob } from "../application/analysis-job.runner.js";
+import { jobStore } from "../jobs/job.store.js";
+import { env } from "../config/env.js";
 
 const router = Router();
 
+/**
+ * Accepts a ZIP upload and starts a background analysis job.
+ *
+ * Responds immediately with 202 and a job id. Progress and the final
+ * report are delivered by GET /api/jobs/:id/events (Server-Sent Events).
+ */
 router.post(
   "/analyze",
   upload.single("repository"),
-  async (req, res, next) => {
+  async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -19,27 +26,25 @@ router.post(
       });
     }
 
-    progressService.startNewAnalysis();
+    if (jobStore.runningCount() >= env.MAX_CONCURRENT_JOBS) {
+      await fs.rm(req.file.path, { force: true });
 
-    try {
-      await logger.startSession();
-
-      await logger.info("Repository analysis started");
-
-      const result = await analyzeUploadedRepository(
-        req.file.path,
-      );
-
-      return res.status(200).json({
-        success: true,
-        report: result.report,
-        markdown: result.markdown,
+      return res.status(429).json({
+        success: false,
+        error: "SERVER_BUSY",
+        message:
+          "The server is busy with other analyses. Please try again in a minute.",
       });
-    } catch (error) {
-      await logger.error("Repository analysis failed", error);
-
-      return next(error);
     }
+
+    const job = jobStore.create();
+
+    void runAnalysisJob(job.id, req.file.path);
+
+    return res.status(202).json({
+      success: true,
+      jobId: job.id,
+    });
   },
 );
 
