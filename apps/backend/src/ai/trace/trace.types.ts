@@ -1,3 +1,5 @@
+import type { GroundingStats } from "../grounding/grounding.service.js";
+
 export interface GenerationTrace {
   startedAt: string;
   finishedAt: string;
@@ -20,6 +22,11 @@ export interface GenerationTrace {
    */
   filesIncluded: number;
   filesAvailable: number;
+
+  /**
+   * Result of checking the model's citations against the repository.
+   */
+  citations: GroundingStats;
 
   repaired: boolean;
   repairAttempts: number;

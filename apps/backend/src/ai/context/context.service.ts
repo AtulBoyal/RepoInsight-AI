@@ -11,12 +11,18 @@ import type {
   FileContext,
 } from "./context.types.js";
 import { rankFiles } from "./file-ranking.js";
+import { MAX_FILE_CONTENT_CHARS } from "../../constants/repository.js";
 
 /**
  * Approximate prompt characters used by a file section's header
  * and separators, on top of the file content itself.
  */
 const FILE_SECTION_OVERHEAD_CHARS = 120;
+
+/**
+ * Characters added per line by the "  42| " line-number prefix.
+ */
+const LINE_NUMBER_OVERHEAD_CHARS = 7;
 
 const EXCLUDED_FILES = new Set([
   "LICENSE",
@@ -112,12 +118,28 @@ function getLanguage(filePath: string): string {
   }
 }
 
+/**
+ * Shortens long files for the prompt, cutting at a line break so
+ * every line the model sees is complete and citable.
+ */
+function truncateAtLine(content: string, maxChars: number): string {
+  if (content.length <= maxChars) {
+    return content;
+  }
+
+  const cut = content.lastIndexOf("\n", maxChars);
+
+  return content.slice(0, cut > 0 ? cut : maxChars);
+}
+
 function toContextFile(file: RepositoryFile): ContextFile {
+  const content = truncateAtLine(file.content, MAX_FILE_CONTENT_CHARS);
+
   return {
     path: file.relativePath,
     language: getLanguage(file.relativePath),
-    content: file.content,
-    truncated: file.truncated,
+    content,
+    truncated: content.length < file.content.length,
   };
 }
 
@@ -156,13 +178,18 @@ function selectFiles(
   let remaining = fileCharBudget;
 
   for (const file of ranked) {
+    const contextFile = toContextFile(file);
+
+    const lineCount = contextFile.content.split("\n").length;
+
     const cost =
-      file.content.length +
+      contextFile.content.length +
+      lineCount * LINE_NUMBER_OVERHEAD_CHARS +
       file.relativePath.length +
       FILE_SECTION_OVERHEAD_CHARS;
 
     if (cost <= remaining) {
-      included.push(toContextFile(file));
+      included.push(contextFile);
       remaining -= cost;
     } else {
       omittedFiles.push(file.relativePath);

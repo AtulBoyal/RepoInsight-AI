@@ -1,12 +1,10 @@
-import { engineeringReportSchema } from "../report/report.schema.js";
+import { modelReportSchema } from "../report/report.schema.js";
 
-import type { EngineeringReport } from "../report/report.types.js";
+import type { ModelReport } from "../report/report.types.js";
 
 /**
- * Validates an EngineeringReport. Throws a ZodError when invalid.
+ * Validates the model's report. Throws a ZodError when invalid.
  */
-export function validateEngineeringReport(
-  data: unknown,
-): EngineeringReport {
-  return engineeringReportSchema.parse(data);
+export function validateModelReport(data: unknown): ModelReport {
+  return modelReportSchema.parse(data);
 }

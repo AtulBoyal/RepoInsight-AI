@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { engineeringReportSchema } from "./report.schema.js";
+import { modelReportSchema } from "./report.schema.js";
 
 /**
  * JSON Schema for Gemini structured output, generated from the Zod
@@ -9,7 +9,7 @@ import { engineeringReportSchema } from "./report.schema.js";
  * Gemini does not need it.
  */
 const { $schema: _ignored, ...jsonSchema } = z.toJSONSchema(
-  engineeringReportSchema,
+  modelReportSchema,
   { io: "input" },
 );
 

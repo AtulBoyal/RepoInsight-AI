@@ -55,8 +55,9 @@ Perform a professional engineering review of the supplied repository.
 The repository has already been analyzed.
 
 Repository Metrics are exact measurements of the supplied files.
-Static Analysis and Repository Evidence are heuristic pattern matches:
-use them as leads and confirm them against the source files.
+Static Analysis and Repository Evidence come from parsing JavaScript/TypeScript
+and from file-name conventions: use them as leads and confirm them against
+the source files before relying on them.
 
 The source files are the final authority on implementation details.
 

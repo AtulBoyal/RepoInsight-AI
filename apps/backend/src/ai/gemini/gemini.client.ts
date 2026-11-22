@@ -49,6 +49,7 @@ export async function generateContent(
               prompt.responseMimeType,
             responseJsonSchema:
               prompt.responseJsonSchema,
+            temperature: env.GEMINI_TEMPERATURE,
           },
         });
 

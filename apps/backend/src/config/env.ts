@@ -20,6 +20,11 @@ const envSchema = z.object({
    * ranked by importance and added until this budget is reached.
    */
   MAX_PROMPT_TOKENS: z.coerce.number().int().min(10_000).default(150_000),
+  /**
+   * Optional sampling temperature (0-2). Lower values make repeated
+   * reviews of the same repository more consistent. Unset = model default.
+   */
+  GEMINI_TEMPERATURE: z.coerce.number().min(0).max(2).optional(),
   SAVE_DEBUG_ARTIFACTS: z
     .enum(["true", "false"])
     .default("false")

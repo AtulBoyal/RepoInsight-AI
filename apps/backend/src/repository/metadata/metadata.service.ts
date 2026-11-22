@@ -2,6 +2,7 @@ import path from "node:path";
 import { buildRepositoryMetrics } from "../metrics/metrics.service.js";
 import { buildStaticAnalysis } from "../static-analysis/analysis.service.js";
 import { buildRepositoryEvidence } from "../evidence/evidence.service.js";
+import { extractSourceFacts } from "../static-analysis/source-facts.js";
 
 import type {
   RepositoryContent,
@@ -195,12 +196,12 @@ export function buildRepositoryMetadata(
   );
 
 
-  const staticAnalysis = buildStaticAnalysis(repository.files);
+  // One parse of every JS/TS file feeds both the counts and the locations.
+  const sourceFacts = extractSourceFacts(repository.files);
 
-  const evidence =
-    buildRepositoryEvidence(
-      repository.files,
-    );
+  const staticAnalysis = buildStaticAnalysis(repository.files, sourceFacts);
+
+  const evidence = buildRepositoryEvidence(repository.files, sourceFacts);
 
   return {
     repositoryName,

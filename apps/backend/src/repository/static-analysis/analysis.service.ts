@@ -1,6 +1,7 @@
 import type { RepositoryFile } from "../../types/repository.js";
 
 import type { StaticAnalysis } from "./analysis.types.js";
+import type { SourceFacts } from "./source-facts.js";
 
 import { buildDuplicateAnalysis } from "./duplicate-analysis.js";
 import { buildFunctionAnalysis } from "./function-analysis.js";
@@ -16,15 +17,13 @@ import { buildTypeScriptAnalysis } from "./typescript-analysis.js";
  */
 export function buildStaticAnalysis(
   files: RepositoryFile[],
+  facts: SourceFacts,
 ): StaticAnalysis {
-  const functions =
-    buildFunctionAnalysis(files);
+  const functions = buildFunctionAnalysis(facts);
 
-  const typescript =
-    buildTypeScriptAnalysis(files);
+  const typescript = buildTypeScriptAnalysis(facts);
 
-  const logging =
-    buildLoggingAnalysis(files);
+  const logging = buildLoggingAnalysis(facts);
 
   const tests =
     buildTestAnalysis(files);

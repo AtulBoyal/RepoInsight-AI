@@ -1,4 +1,7 @@
-import type { TypeScriptPatternType } from "../static-analysis/typescript-patterns.js";
+import type {
+  LoggingType,
+  TypeScriptIssueType,
+} from "../static-analysis/source-facts.js";
 
 /**
  * Base location inside a repository.
@@ -22,12 +25,7 @@ export interface FunctionEvidence extends SourceLocation {
  * Evidence for logging statements.
  */
 export interface LoggingEvidence extends SourceLocation {
-  type:
-    | "console.log"
-    | "console.error"
-    | "console.warn"
-    | "debugger"
-    | "process.exit";
+  type: LoggingType;
 }
 
 /**
@@ -35,7 +33,7 @@ export interface LoggingEvidence extends SourceLocation {
  */
 export interface TypeScriptEvidence
   extends SourceLocation {
-  type: TypeScriptPatternType;
+  type: TypeScriptIssueType;
 }
 
 /**

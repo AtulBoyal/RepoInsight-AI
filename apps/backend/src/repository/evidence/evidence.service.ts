@@ -3,9 +3,7 @@ import type { RepositoryFile } from "../../types/repository.js";
 import type { RepositoryEvidence } from "./evidence.types.js";
 
 import { buildAnnotationEvidence } from "../static-analysis/todo-evidence.js";
-import { buildFunctionEvidence } from "./function-evidence.js";
-import { buildLoggingEvidence } from "./logging-evidence.js";
-import { buildTypeScriptEvidence } from "./typescript-evidence.js";
+import type { SourceFacts } from "../static-analysis/source-facts.js";
 
 /**
  * Builds complete repository evidence.
@@ -16,23 +14,13 @@ import { buildTypeScriptEvidence } from "./typescript-evidence.js";
  */
 export function buildRepositoryEvidence(
   files: RepositoryFile[],
+  facts: SourceFacts,
 ): RepositoryEvidence {
-  const functions =
-    buildFunctionEvidence(files);
-
-  const logging =
-    buildLoggingEvidence(files);
-
-  const typescript =
-    buildTypeScriptEvidence(files);
-
-  const annotations =
-    buildAnnotationEvidence(files);
-
   return {
-    functions,
-    logging,
-    typescript,
-    annotations,
+    // Longest first: the prompt shows the top entries.
+    functions: [...facts.functions].sort((a, b) => b.length - a.length),
+    logging: facts.logging,
+    typescript: facts.typescript,
+    annotations: buildAnnotationEvidence(files),
   };
 }
