@@ -36,7 +36,7 @@ Each generated report includes:
 
 ## Intelligent Repository Analysis
 
-- Upload repositories as ZIP archives
+- Analyze a public GitHub repository by URL (any branch, tag or commit), or upload a ZIP archive
 - Automatic repository extraction
 - Repository root detection
 - Recursive repository traversal
@@ -324,6 +324,11 @@ FRONTEND_URL=https://your-frontend.example
 # Optional: analyses allowed to run at once (extra uploads get HTTP 429)
 MAX_CONCURRENT_JOBS=2
 
+# Optional: GitHub token for analyzing by URL. Without it GitHub allows
+# 60 API requests/hour from the server's IP; with it, 5,000. A fine-grained
+# token with no extra permissions is enough (public repositories only).
+# GITHUB_TOKEN=github_pat_...
+
 # Optional: rate limits on starting analyses (0 = no limit)
 RATE_LIMIT_PER_HOUR=5     # per visitor (IP address)
 RATE_LIMIT_PER_DAY=100    # whole site
@@ -347,6 +352,7 @@ SAVE_DEBUG_ARTIFACTS=false
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/analyze` | Upload a ZIP (`repository` form field). Returns `202 { jobId }`. |
+| `POST` | `/api/analyze/github` | JSON `{ "url": "https://github.com/owner/repo" }`. Public repositories only; checked on GitHub before the job starts. Returns `202 { jobId, repository }`. |
 | `GET` | `/api/jobs/:id/events` | Server-Sent Events: `progress`, then `completed` (report + markdown) or `failed` (error body). |
 | `GET` | `/api/jobs/:id` | Current job state as JSON. |
 | `GET` | `/api/health` | Health check. |
@@ -381,7 +387,6 @@ Each analysis runs as its own job, so concurrent users never see each other's pr
 
 ## Version 1.1
 
-- GitHub Repository URL Analysis
 - Drag & Drop Uploads
 - Improved Language Detection
 - Repository Metrics Dashboard
