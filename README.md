@@ -79,7 +79,7 @@ RepoInsight-AI evaluates:
 - Design Decisions
 - Resume Readiness
 
-Every AI response is validated before generating the final report.
+Every AI response is validated against a schema, and every file and line the model cites is checked against the code it was shown. Invented references are removed, and valid ones include the real code snippet.
 
 ---
 
@@ -284,6 +284,29 @@ npm run dev
 
 ---
 
+# Testing
+
+```bash
+cd apps/backend
+npm run typecheck   # source, tests and scripts
+npm test            # Vitest: extraction safety, filtering, citations, analyzers, jobs, pipeline
+```
+
+GitHub Actions runs the backend checks, the frontend lint and build, and the report schema sync check on every push and pull request.
+
+## Measuring Consistency
+
+The evaluation script analyzes the same repositories several times with the real Gemini API and reports how much scores and citations vary:
+
+```bash
+cd apps/backend
+npm run eval -- --runs 3 path/to/repo1.zip path/to/repo2.zip
+```
+
+Results are saved to `apps/backend/eval-results/`. Each run is a paid Gemini call.
+
+---
+
 # Environment Variables
 
 ## Backend
@@ -300,6 +323,9 @@ MAX_CONCURRENT_JOBS=2
 
 # Optional: prompt size cap; files are ranked by importance and added until it is reached
 MAX_PROMPT_TOKENS=150000
+
+# Optional: sampling temperature 0-2 (unset = model default)
+GEMINI_TEMPERATURE=0.2
 
 # Optional: save full prompts and model responses (they contain the
 # uploaded source code) to the log folder. Keep false in production.
