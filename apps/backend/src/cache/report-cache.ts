@@ -7,6 +7,8 @@ import { jobStore } from "../jobs/job.store.js";
 import type { JobResult } from "../jobs/job.types.js";
 import { ANALYSIS_VERSION } from "./analysis-version.js";
 import { MemoryReportStore, type ReportStore } from "./report-store.js";
+import { PostgresReportStore } from "./postgres-report-store.js";
+import { getDatabase, type Database } from "../db/database.js";
 
 /**
  * Cache key for a GitHub commit. The repository name is included so a
@@ -34,14 +36,37 @@ export async function uploadCacheKey(zipPath: string): Promise<string> {
 export class ReportCache {
   private readonly inFlight = new Map<string, string>();
 
-  constructor(private readonly store: ReportStore) {}
+  /**
+   * @param store returns the store to use now (resolved per call, so a
+   *   database connected after startup, or in tests, is picked up).
+   */
+  constructor(private readonly store: () => ReportStore) {}
 
+  /**
+   * A stored report for this input, if any. A storage error is logged
+   * and treated as "not cached", so a database outage does not stop
+   * new analyses.
+   */
   async lookup(key: string): Promise<JobResult | undefined> {
-    return this.store.get(key);
+    try {
+      return await this.store().get(key);
+    } catch (error) {
+      console.error("Report cache lookup failed:", error);
+      return undefined;
+    }
   }
 
-  async save(key: string, result: JobResult): Promise<void> {
-    await this.store.set(key, result);
+  /**
+   * Stores a finished report. Returns its id when it can be shared.
+   * A storage error is logged and the report is simply not saved.
+   */
+  async save(key: string, result: JobResult): Promise<string | undefined> {
+    try {
+      return await this.store().set(key, result);
+    } catch (error) {
+      console.error("Saving report failed:", error);
+      return undefined;
+    }
   }
 
   /**
@@ -70,9 +95,31 @@ export class ReportCache {
   }
 }
 
-export const reportCache = new ReportCache(
-  new MemoryReportStore(
-    env.REPORT_CACHE_MAX_ENTRIES,
-    env.REPORT_CACHE_TTL_HOURS * 60 * 60 * 1000,
-  ),
+const memoryStore = new MemoryReportStore(
+  env.REPORT_CACHE_MAX_ENTRIES,
+  env.REPORT_CACHE_TTL_HOURS * 60 * 60 * 1000,
 );
+
+const postgresStores = new WeakMap<Database, PostgresReportStore>();
+
+/**
+ * Postgres when DATABASE_URL is configured, otherwise memory.
+ */
+function currentStore(): ReportStore {
+  const db = getDatabase();
+
+  if (!db) {
+    return memoryStore;
+  }
+
+  let store = postgresStores.get(db);
+
+  if (!store) {
+    store = new PostgresReportStore(db, env.REPORT_RETENTION_DAYS);
+    postgresStores.set(db, store);
+  }
+
+  return store;
+}
+
+export const reportCache = new ReportCache(currentStore);

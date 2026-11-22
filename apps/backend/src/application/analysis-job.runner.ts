@@ -10,7 +10,7 @@ import { downloadRepositoryZip } from "../github/github.client.js";
 import { MAX_UPLOAD_SIZE } from "../constants/upload.js";
 import { reportCache } from "../cache/report-cache.js";
 
-import type { AnalysisSource, JobContext } from "../jobs/job.types.js";
+import type { AnalysisSource, JobContext, JobResult } from "../jobs/job.types.js";
 import type { RepositoryInfo } from "../types/repository-info.js";
 
 const DOWNLOAD_DIRECTORY = "tmp/uploads";
@@ -93,7 +93,7 @@ export async function runAnalysisJob(
     // Deletes the ZIP and extracted files when done.
     const result = await analyzeUploadedRepository(zipPath, context, repository);
 
-    const jobResult = {
+    const jobResult: JobResult = {
       report: result.report,
       markdown: result.markdown,
       repository,
@@ -102,7 +102,8 @@ export async function runAnalysisJob(
     };
 
     if (options.cacheKey) {
-      await reportCache.save(options.cacheKey, jobResult);
+      // With a database, the saved report's id enables sharing.
+      jobResult.reportId = await reportCache.save(options.cacheKey, jobResult);
     }
 
     jobStore.complete(jobId, jobResult);

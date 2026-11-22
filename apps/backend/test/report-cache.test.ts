@@ -52,8 +52,10 @@ describe("MemoryReportStore", () => {
 });
 
 describe("ReportCache", () => {
+  const store = new MemoryReportStore(10, 60_000);
+
   it("lets identical requests join a running job, until it finishes", () => {
-    const cache = new ReportCache(new MemoryReportStore(10, 60_000));
+    const cache = new ReportCache(() => store);
     const job = jobStore.create();
 
     cache.track("key", job.id);
@@ -64,7 +66,7 @@ describe("ReportCache", () => {
   });
 
   it("only releases the job it was tracking", () => {
-    const cache = new ReportCache(new MemoryReportStore(10, 60_000));
+    const cache = new ReportCache(() => store);
     const newer = jobStore.create();
 
     cache.track("key", newer.id);
