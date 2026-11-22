@@ -37,3 +37,5 @@ tmp/*
 
 demo
 logs
+# Evaluation runs (apps/backend/scripts/eval.ts)
+eval-results/
