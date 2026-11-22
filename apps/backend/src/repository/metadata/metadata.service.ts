@@ -72,46 +72,79 @@ function detectLanguages(
   return [...languages].sort();
 }
 
+/**
+ * npm packages that identify a framework. Matched against the
+ * dependency names in package.json, not its raw text.
+ */
+const NPM_FRAMEWORKS: ReadonlyArray<[string, string]> = [
+  ["react", "React"],
+  ["next", "Next.js"],
+  ["express", "Express"],
+  ["fastify", "Fastify"],
+  ["vite", "Vite"],
+  ["@nestjs/core", "NestJS"],
+  ["vue", "Vue"],
+  ["nuxt", "Nuxt"],
+  ["svelte", "Svelte"],
+  ["@angular/core", "Angular"],
+];
+
+function readPackageDependencies(content: string): Set<string> {
+  try {
+    const manifest = JSON.parse(content) as Record<string, unknown>;
+    const names = new Set<string>();
+
+    for (const key of [
+      "dependencies",
+      "devDependencies",
+      "peerDependencies",
+    ]) {
+      const section = manifest[key];
+
+      if (section && typeof section === "object") {
+        for (const name of Object.keys(section)) {
+          names.add(name);
+        }
+      }
+    }
+
+    return names;
+  } catch {
+    // Truncated or malformed package.json
+    return new Set();
+  }
+}
+
 function detectFrameworks(
   files: RepositoryFile[],
 ): string[] {
   const frameworks = new Set<string>();
 
   for (const file of files) {
-    const content = file.content.toLowerCase();
+    if (file.name === "package.json") {
+      const dependencies = readPackageDependencies(file.content);
 
-    if (
-      file.name === "package.json" ||
-      file.name === "package-lock.json"
-    ) {
-      if (content.includes("\"react\""))
-        frameworks.add("React");
-
-      if (content.includes("\"next\""))
-        frameworks.add("Next.js");
-
-      if (content.includes("\"express\""))
-        frameworks.add("Express");
-
-      if (content.includes("\"vite\""))
-        frameworks.add("Vite");
-
-      if (content.includes("\"nestjs\""))
-        frameworks.add("NestJS");
-
-      if (content.includes("\"vue\""))
-        frameworks.add("Vue");
-
-      if (content.includes("\"angular\""))
-        frameworks.add("Angular");
+      for (const [packageName, framework] of NPM_FRAMEWORKS) {
+        if (dependencies.has(packageName)) {
+          frameworks.add(framework);
+        }
+      }
     }
 
     if (file.name === "pom.xml") {
       frameworks.add("Maven");
     }
 
-    if (file.name === "requirements.txt") {
-      frameworks.add("Python");
+    if (file.name === "build.gradle" || file.name === "build.gradle.kts") {
+      frameworks.add("Gradle");
+    }
+
+    if (file.name === "requirements.txt" || file.name === "pyproject.toml") {
+      const content = file.content.toLowerCase();
+
+      if (/^django\b/m.test(content) || content.includes('"django')) frameworks.add("Django");
+      if (/^flask\b/m.test(content) || content.includes('"flask')) frameworks.add("Flask");
+      if (/^fastapi\b/m.test(content) || content.includes('"fastapi')) frameworks.add("FastAPI");
     }
 
     if (file.name === "Cargo.toml") {
@@ -137,7 +170,6 @@ export function buildRepositoryMetadata(
     .filter((name) =>
       [
         "package.json",
-        "package-lock.json",
         "tsconfig.json",
         "vite.config.ts",
         "vite.config.js",
@@ -146,7 +178,9 @@ export function buildRepositoryMetadata(
         "Dockerfile",
         "docker-compose.yml",
         "requirements.txt",
+        "pyproject.toml",
         "pom.xml",
+        "build.gradle",
         "Cargo.toml",
         "go.mod",
       ].includes(name),
