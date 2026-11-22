@@ -1,4 +1,4 @@
-import { STAGES } from "./progressStages";
+import { STAGES, stageKey } from "./progressStages";
 
 interface Props {
   stage: string;
@@ -8,7 +8,7 @@ export default function CurrentStageCard({
   stage,
 }: Props) {
   const current =
-    STAGES.find((item) => item.key === stage) ??
+    STAGES.find((item) => item.key === stageKey(stage)) ??
     STAGES[0];
 
   const Icon = current.icon;

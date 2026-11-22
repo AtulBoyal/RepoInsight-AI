@@ -3,7 +3,7 @@ import {
   LoaderCircle,
 } from "lucide-react";
 
-import { STAGES } from "./progressStages";
+import { STAGES, stageKey } from "./progressStages";
 
 interface Props {
   stage: string;
@@ -14,7 +14,7 @@ export default function StageTimeline({
 }: Props) {
   const currentIndex =
     STAGES.findIndex(
-      (item) => item.key === stage,
+      (item) => item.key === stageKey(stage),
     );
 
   const visibleStages = STAGES.filter(

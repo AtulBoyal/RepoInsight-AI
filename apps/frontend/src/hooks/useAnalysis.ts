@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 
-import { startAnalysis, subscribeToJob } from "../services/api";
+import {
+  startAnalysis,
+  startGithubAnalysis,
+  subscribeToJob,
+} from "../services/api";
 import type { AnalyzeRepositoryResponse } from "../types/report";
 import type { AnalysisProgress } from "../types/progress";
 import type {
@@ -68,7 +72,8 @@ export function useAnalysis() {
       return;
     }
 
-    if (body?.error === "UPLOAD_TOO_LARGE" || status === 413) {
+    // A bare 413 (no error code) comes from a proxy rejecting the upload.
+    if (body?.error === "UPLOAD_TOO_LARGE" || (status === 413 && !body?.error)) {
       setUploadTooLargeError({
         ...UPLOAD_TOO_LARGE,
         message: body?.message ?? UPLOAD_TOO_LARGE.message,
@@ -134,6 +139,13 @@ export function useAnalysis() {
       return;
     }
 
+    followJob(jobId);
+  }
+
+  /**
+   * Follows a started job until it completes or fails.
+   */
+  function followJob(jobId: string) {
     unsubscribeRef.current = subscribeToJob(jobId, {
       onProgress: setProgress,
 
@@ -158,6 +170,44 @@ export function useAnalysis() {
     });
   }
 
+  /**
+   * Analyzes a public GitHub repository by URL.
+   */
+  async function analyzeGithub(url: string) {
+    unsubscribeRef.current?.();
+    reset();
+
+    setLoading(true);
+    setProgress({
+      stage: "DOWNLOADING",
+      message: "Checking the repository on GitHub...",
+      percentage: 2,
+    });
+
+    let jobId: string;
+
+    try {
+      ({ jobId } = await startGithubAnalysis(url));
+    } catch (requestError) {
+      if (axios.isAxiosError(requestError) && requestError.response) {
+        handleFailure(
+          requestError.response.data as ApiErrorBody | undefined,
+          requestError.response.status,
+        );
+        return;
+      }
+
+      handleFailure({
+        success: false,
+        error: "NETWORK_ERROR",
+        message: "Could not reach the server. Please try again.",
+      });
+      return;
+    }
+
+    followJob(jobId);
+  }
+
   return {
     loading,
     error,
@@ -166,6 +216,7 @@ export function useAnalysis() {
     result,
     progress,
     analyze,
+    analyzeGithub,
     reset,
   };
 }

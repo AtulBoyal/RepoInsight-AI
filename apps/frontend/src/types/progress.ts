@@ -1,6 +1,7 @@
 export type AnalysisStage =
   | "IDLE"
   | "UPLOADING"
+  | "DOWNLOADING"
   | "EXTRACTING"
   | "READING_REPOSITORY"
   | "BUILDING_METADATA"

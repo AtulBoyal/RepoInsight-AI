@@ -5,6 +5,8 @@ import FloatingProgress from "../components/progress/FloatingProgress";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import UploadZone from "../components/upload/UploadZone";
+import GitHubUrlInput from "../components/upload/GitHubUrlInput";
+import SourceToggle, { type Source } from "../components/upload/SourceToggle";
 import SelectedFile from "../components/upload/SelectedFile";
 import AnalyzeButton from "../components/upload/AnalyzeButton";
 import AnalysisProgress from "../components/status/AnalysisProgress";
@@ -16,14 +18,19 @@ import UploadTooLargeModal from "../components/errors/UploadTooLargeModal";
 import { useAnalysis } from "../hooks/useAnalysis";
 
 export default function HomePage() {
+  const [source, setSource] = useState<Source>("zip");
+
   const [file, setFile] =
     useState<File | null>(null);
+
+  const [githubUrl, setGithubUrl] = useState("");
 
   const [showProgress, setShowProgress] =
     useState(true);
 
   const {
     analyze,
+    analyzeGithub,
     loading,
     error,
     result,
@@ -35,6 +42,21 @@ export default function HomePage() {
     reset,
   } = useAnalysis();
 
+  const canStart =
+    source === "zip" ? file !== null : githubUrl.trim().length > 0;
+
+  function startAnalysis() {
+    if (!canStart || loading) return;
+
+    setShowProgress(true);
+
+    if (source === "zip") {
+      analyze(file!);
+    } else {
+      analyzeGithub(githubUrl.trim());
+    }
+  }
+
   return (
     <Page>
       <PageHeader
@@ -42,29 +64,35 @@ export default function HomePage() {
         subtitle="Professional AI-powered engineering review for GitHub repositories."
       />
 
-      <UploadZone
-        onFileSelected={setFile}
-      />
+      <SourceToggle value={source} onChange={setSource} />
 
-      {file && (
-        <div className="mt-6">
-          <SelectedFile
-            file={file}
+      {source === "zip" ? (
+        <>
+          <UploadZone
+            onFileSelected={setFile}
           />
-        </div>
+
+          {file && (
+            <div className="mt-6">
+              <SelectedFile
+                file={file}
+              />
+            </div>
+          )}
+        </>
+      ) : (
+        <GitHubUrlInput
+          value={githubUrl}
+          onChange={setGithubUrl}
+          onSubmit={startAnalysis}
+        />
       )}
 
       <div className="mt-8">
         <AnalyzeButton
-          disabled={!file}
+          disabled={!canStart}
           loading={loading}
-          onClick={() => {
-            if (!file) return;
-
-            setShowProgress(true);
-
-            analyze(file);
-          }}
+          onClick={startAnalysis}
         />
       </div>
 

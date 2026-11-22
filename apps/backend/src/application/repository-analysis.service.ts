@@ -7,6 +7,7 @@ import { analyzeRepository } from "../ai/analysis/ai-analysis.service.js";
 
 import type { AnalysisResult } from "../ai/analysis/analysis.types.js";
 import type { JobContext } from "../jobs/job.types.js";
+import type { RepositoryInfo } from "../types/repository-info.js";
 
 /**
  * Runs the full analysis for an uploaded ZIP.
@@ -17,6 +18,7 @@ import type { JobContext } from "../jobs/job.types.js";
 export async function analyzeUploadedRepository(
   zipFilePath: string,
   job: JobContext,
+  repository: RepositoryInfo,
 ): Promise<AnalysisResult> {
   const extractionDirectory = await fs.mkdtemp(
     path.join(os.tmpdir(), "repository-"),
@@ -27,9 +29,10 @@ export async function analyzeUploadedRepository(
       zipFilePath,
       extractionDirectory,
       job,
+      repository.name,
     );
 
-    return await analyzeRepository({ metadata }, job);
+    return await analyzeRepository({ metadata, repository }, job);
   } finally {
     await Promise.allSettled([
       fs.rm(extractionDirectory, {
