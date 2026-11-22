@@ -31,4 +31,21 @@ export interface AnalyzeRepositoryResponse {
   analyzedAt: string;
   /** True when the same input was analyzed before and the report reused. */
   cached: boolean;
+  /** Present when the server saves reports; needed to share one. */
+  reportId?: string;
+}
+
+export interface ShareResponse {
+  shareId: string;
+  expiresAt: string;
+  /** Only for the request that created the link; allows unsharing. */
+  ownerToken?: string;
+}
+
+export interface SharedReportResponse {
+  report: EngineeringReport;
+  markdown: string;
+  repository: RepositoryInfo;
+  analyzedAt: string;
+  expiresAt: string;
 }

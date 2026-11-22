@@ -17,6 +17,9 @@ export default defineConfig({
       // env.ts requires a key at import time; tests never call Gemini.
       GEMINI_API_KEY: "test-key",
       SAVE_DEBUG_ARTIFACTS: "false",
+      // Never use a real database from .env in tests (PGlite is used instead).
+      DATABASE_URL: "",
+      GITHUB_TOKEN: "",
       TMPDIR: testTmpDir,
     },
   },

@@ -17,6 +17,11 @@ export interface JobResult {
   analyzedAt: string;
   /** True when this result was reused from the cache. */
   cached: boolean;
+  /**
+   * Id of the saved report, present only when a database is configured.
+   * Needed to create a share link.
+   */
+  reportId?: string;
 }
 
 /**

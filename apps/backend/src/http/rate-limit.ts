@@ -90,3 +90,23 @@ export const analysisRateLimits: RequestHandler[] = [
       })
     : passThrough,
 ];
+
+/**
+ * Light limit for the sharing endpoints (create, view, unshare).
+ * Share ids are 128-bit random values, so guessing is infeasible anyway;
+ * this keeps automated scraping and database load in check.
+ */
+export const shareRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  keyGenerator: (req) => ipKeyGenerator(req.ip ?? "unknown"),
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    res.status(429).json({
+      success: false,
+      error: "RATE_LIMITED",
+      message: "Too many requests. Please wait a few minutes and try again.",
+    });
+  },
+});

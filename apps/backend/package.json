@@ -11,8 +11,10 @@
     "eval": "tsx scripts/eval.ts"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.15",
     "@types/cors": "^2.8.19",
     "@types/multer": "^2.1.0",
+    "@types/pg": "8.23.1",
     "@types/yauzl": "^2.10.3",
     "@types/yazl": "^3.3.1",
     "tsx": "^4.22.4",
@@ -27,6 +29,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "8.7.3",
     "multer": "^2.2.0",
+    "pg": "8.23.1",
     "typescript": "^6.0.3",
     "yauzl": "^2.10.0",
     "zod": "^4.4.3"

@@ -1,13 +1,16 @@
 import type { JobResult } from "../jobs/job.types.js";
 
 /**
- * Where finished reports are kept for reuse. The in-memory store below
- * is the default; a database-backed store can implement the same
- * interface later (e.g. for saved, shareable reports).
+ * Where finished reports are kept for reuse: in memory by default, or in
+ * Postgres (PostgresReportStore) when DATABASE_URL is set.
  */
 export interface ReportStore {
   get(key: string): Promise<JobResult | undefined>;
-  set(key: string, result: JobResult): Promise<void>;
+  /**
+   * Saves (or replaces) the report for this key. Returns the saved
+   * report's id when it can be shared, otherwise undefined.
+   */
+  set(key: string, result: JobResult): Promise<string | undefined>;
 }
 
 interface Entry {
@@ -48,9 +51,9 @@ export class MemoryReportStore implements ReportStore {
     return entry.result;
   }
 
-  async set(key: string, result: JobResult): Promise<void> {
+  async set(key: string, result: JobResult): Promise<undefined> {
     if (this.maxEntries <= 0) {
-      return;
+      return undefined;
     }
 
     this.entries.delete(key);
@@ -60,6 +63,9 @@ export class MemoryReportStore implements ReportStore {
       const oldest = this.entries.keys().next().value as string;
       this.entries.delete(oldest);
     }
+
+    // Reports in memory cannot be shared (they vanish on restart).
+    return undefined;
   }
 
   get size(): number {

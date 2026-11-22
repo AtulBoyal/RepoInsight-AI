@@ -50,6 +50,19 @@ const envSchema = z.object({
    */
   REPORT_CACHE_TTL_HOURS: z.coerce.number().positive().default(168),
   /**
+   * Postgres connection string (e.g. Neon). Enables saved reports with
+   * share links, and a report cache that survives restarts. Without it,
+   * reports are cached in memory only and sharing is unavailable.
+   */
+  DATABASE_URL: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() || undefined),
+  /**
+   * Days a saved report (and its share link) is kept before deletion.
+   */
+  REPORT_RETENTION_DAYS: z.coerce.number().positive().default(30),
+  /**
    * Upper bound on the prompt size sent to Gemini. Source files are
    * ranked by importance and added until this budget is reached.
    */

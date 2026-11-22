@@ -1,6 +1,10 @@
 import axios from "axios";
 
-import type { AnalyzeRepositoryResponse } from "../types/report";
+import type {
+  AnalyzeRepositoryResponse,
+  SharedReportResponse,
+  ShareResponse,
+} from "../types/report";
 import type { AnalysisProgress } from "../types/progress";
 import type { ApiErrorBody } from "../types/errors";
 
@@ -114,4 +118,34 @@ export function subscribeToJob(
   };
 
   return finish;
+}
+
+/**
+ * Creates (or returns the existing) public link for a saved report.
+ */
+export async function shareReport(reportId: string): Promise<ShareResponse> {
+  const response = await api.post<ShareResponse>(
+    `/reports/${encodeURIComponent(reportId)}/share`,
+  );
+
+  return response.data;
+}
+
+export async function getSharedReport(
+  shareId: string,
+): Promise<SharedReportResponse> {
+  const response = await api.get<SharedReportResponse>(
+    `/shared/${encodeURIComponent(shareId)}`,
+  );
+
+  return response.data;
+}
+
+export async function unshareReport(
+  shareId: string,
+  ownerToken: string,
+): Promise<void> {
+  await api.delete(`/shared/${encodeURIComponent(shareId)}`, {
+    headers: { Authorization: `Bearer ${ownerToken}` },
+  });
 }
